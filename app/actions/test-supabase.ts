@@ -81,7 +81,7 @@ export async function runServerSupabaseTest(): Promise<ServerAuthTestResult> {
   try {
     const supabase = await createServerSupabaseClient();
     const { error, status } = await supabase
-      .from("_auth_test_ping")
+      .from("users")
       .select("*", { count: "exact", head: true });
 
     return {

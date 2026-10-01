@@ -75,7 +75,7 @@ export default function IntegrationTestPage() {
       let supabaseStatus = "";
       try {
         const { error, status } = await supabase
-          .from("_auth_test_ping")
+          .from("users")
           .select("*", { count: "exact", head: true });
 
         if (isPlaceholderUrl) {

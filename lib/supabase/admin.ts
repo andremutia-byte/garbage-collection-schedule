@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "../database.types";
 
 /**
  * Creates an administrative Supabase client using the service role key.
@@ -9,7 +10,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
  * - NEVER import or execute in client components.
  * - NEVER prefix SUPABASE_SERVICE_ROLE_KEY with NEXT_PUBLIC_.
  */
-export function createAdminSupabaseClient(): SupabaseClient {
+export function createAdminSupabaseClient(): SupabaseClient<Database> {
   if (typeof window !== "undefined") {
     throw new Error(
       "CRITICAL SECURITY ERROR: createAdminSupabaseClient cannot be run on the client side!"

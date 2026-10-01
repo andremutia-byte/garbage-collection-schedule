@@ -2,6 +2,7 @@
 
 import { useSession } from "@clerk/nextjs";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "../database.types";
 import { useMemo } from "react";
 
 function getSupabaseCredentials() {
@@ -22,7 +23,7 @@ function getSupabaseCredentials() {
 /**
  * Creates an unauthenticated Supabase client for public queries in browser components.
  */
-export function createBrowserSupabaseClient(): SupabaseClient {
+export function createBrowserSupabaseClient(): SupabaseClient<Database> {
   const { supabaseUrl, supabaseKey } = getSupabaseCredentials();
   return createClient(supabaseUrl, supabaseKey);
 }
@@ -33,7 +34,7 @@ export function createBrowserSupabaseClient(): SupabaseClient {
  */
 export function createClerkSupabaseClient(
   session: ReturnType<typeof useSession>["session"]
-): SupabaseClient {
+): SupabaseClient<Database> {
   const { supabaseUrl, supabaseKey } = getSupabaseCredentials();
 
   return createClient(supabaseUrl, supabaseKey, {
@@ -47,7 +48,7 @@ export function createClerkSupabaseClient(
  * React hook that returns an authenticated Supabase client in Client Components.
  * Automatically stays in sync with the active Clerk session.
  */
-export function useClerkSupabaseClient(): SupabaseClient {
+export function useClerkSupabaseClient(): SupabaseClient<Database> {
   const { session } = useSession();
 
   return useMemo(() => {

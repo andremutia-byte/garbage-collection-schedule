@@ -1,5 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "../database.types";
 
 function getSupabaseCredentials() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -21,7 +22,7 @@ function getSupabaseCredentials() {
  * Server Actions, and Route Handlers.
  * Injects Clerk's session token via the official Third-Party Auth accessToken option.
  */
-export async function createServerSupabaseClient(): Promise<SupabaseClient> {
+export async function createServerSupabaseClient(): Promise<SupabaseClient<Database>> {
   const { supabaseUrl, supabaseKey } = getSupabaseCredentials();
 
   return createClient(supabaseUrl, supabaseKey, {
@@ -41,7 +42,7 @@ export async function createServerSupabaseClient(): Promise<SupabaseClient> {
 /**
  * Creates an unauthenticated Supabase client for public queries on the server.
  */
-export function createPublicServerSupabaseClient(): SupabaseClient {
+export function createPublicServerSupabaseClient(): SupabaseClient<Database> {
   const { supabaseUrl, supabaseKey } = getSupabaseCredentials();
 
   return createClient(supabaseUrl, supabaseKey, {
