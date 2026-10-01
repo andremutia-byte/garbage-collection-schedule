@@ -12,31 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.18"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       addresses: {
@@ -49,6 +24,7 @@ export type Database = {
           lng: number | null
           postal_code: string
           street: string
+          unit: string | null
           updated_at: string
           zone_id: string | null
         }
@@ -61,6 +37,7 @@ export type Database = {
           lng?: number | null
           postal_code: string
           street: string
+          unit?: string | null
           updated_at?: string
           zone_id?: string | null
         }
@@ -73,6 +50,7 @@ export type Database = {
           lng?: number | null
           postal_code?: string
           street?: string
+          unit?: string | null
           updated_at?: string
           zone_id?: string | null
         }
@@ -489,8 +467,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      auth_is_admin: { Args: never; Returns: boolean }
       auth_is_admin_or_dispatcher: { Args: never; Returns: boolean }
       auth_is_staff: { Args: never; Returns: boolean }
+      sync_clerk_user: {
+        Args: { p_clerk_id: string; p_email: string }
+        Returns: undefined
+      }
     }
     Enums: {
       notification_pref: "email" | "sms" | "push" | "none"
@@ -625,9 +608,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
       notification_pref: ["email", "sms", "push", "none"],
