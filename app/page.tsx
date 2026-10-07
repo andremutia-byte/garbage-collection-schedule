@@ -28,13 +28,19 @@ export default function LandingPage() {
           </div>
 
           <nav className="flex items-center gap-4">
+            <a
+              href="#how-it-works"
+              className="hidden md:inline-block text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors"
+            >
+              How It Works
+            </a>
             <Show
               when="signed-out"
               fallback={
                 <div className="flex items-center gap-4">
                   <Link
                     href="/dashboard"
-                    className="hidden sm:flex text-sm font-medium text-slate-600 hover:text-slate-900 px-4 py-2 transition-colors items-center gap-1"
+                    className="flex text-sm font-medium text-slate-600 hover:text-slate-900 px-3 py-2 transition-colors items-center gap-1"
                   >
                     My Schedule <ArrowRight className="h-4 w-4" />
                   </Link>
@@ -44,7 +50,7 @@ export default function LandingPage() {
             >
               <div className="flex items-center gap-2">
                 <SignInButton mode="modal">
-                  <button className="hidden sm:block text-sm font-medium text-slate-600 hover:text-slate-900 px-4 py-2 transition-colors">
+                  <button className="text-sm font-medium text-slate-600 hover:text-slate-900 px-3 py-2 transition-colors">
                     Log in
                   </button>
                 </SignInButton>
@@ -110,7 +116,7 @@ export default function LandingPage() {
         </section>
 
         {/* How It Works */}
-        <section className="bg-slate-50 py-24">
+        <section id="how-it-works" className="bg-slate-50 py-24 scroll-mt-16">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="mx-auto max-w-2xl text-center">
               <h2 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
@@ -168,7 +174,7 @@ export default function LandingPage() {
         </section>
 
         {/* Platform Explanation */}
-        <section className="bg-white py-24 overflow-hidden">
+        <section id="categories" className="bg-white py-24 overflow-hidden scroll-mt-16">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="grid grid-cols-1 gap-16 lg:grid-cols-2 lg:items-center">
               <div>
@@ -282,14 +288,14 @@ export default function LandingPage() {
             &copy; {new Date().getFullYear()} Garbage Collection Schedule. All rights reserved.
           </p>
           <div className="flex gap-6 text-sm font-medium text-slate-600">
-            <a href="#" className="hover:text-slate-900 transition-colors">
-              Privacy Policy
+            <a href="#how-it-works" className="hover:text-slate-900 transition-colors">
+              How It Works
             </a>
-            <a href="#" className="hover:text-slate-900 transition-colors">
-              Terms of Service
+            <a href="#categories" className="hover:text-slate-900 transition-colors">
+              Waste Types
             </a>
-            <a href="#" className="hover:text-slate-900 transition-colors">
-              Contact Support
+            <a href="/dashboard" className="hover:text-slate-900 transition-colors">
+              Resident Portal
             </a>
           </div>
         </div>
