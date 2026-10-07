@@ -14,6 +14,12 @@ export default function SignUpPage() {
         </Link>
       </div>
       <div className="w-full max-w-md">
+        <div className="mb-4 rounded-xl border border-emerald-200/80 bg-emerald-50/70 p-3.5 text-center text-xs text-emerald-900 shadow-2xs">
+          <p className="font-semibold text-emerald-800">Account Security Requirement</p>
+          <p className="mt-0.5 text-emerald-700/90">
+            Passwords must be at least 8 characters long (Clerk enforces 8+ characters).
+          </p>
+        </div>
         <SignUp />
       </div>
     </div>
