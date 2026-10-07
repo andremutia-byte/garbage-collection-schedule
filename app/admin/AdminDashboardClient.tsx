@@ -165,12 +165,12 @@ export function AdminDashboardClient({ stats }: { stats: AdminStats }) {
           {/* Card 1: Total Residents */}
           <Link
             href="/admin/residents"
-            className="group bg-white rounded-xl border border-slate-200 p-5 shadow-sm hover:border-blue-300 hover:shadow transition-all flex items-start justify-between"
+            className="group bg-white rounded-2xl border border-slate-200/90 p-5 shadow-2xs hover:border-blue-300 hover:shadow-xs transition-all flex items-start justify-between"
           >
             <div className="space-y-1">
-              <p className="text-xs font-medium uppercase tracking-wider text-slate-500">Total Residents</p>
-              <p className="text-3xl font-bold text-slate-900">{stats.totalResidents.toLocaleString()}</p>
-              <p className="text-xs text-slate-500 flex items-center gap-1 pt-1">
+              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Total Residents</p>
+              <p className="text-3xl font-extrabold tracking-tight text-slate-900">{stats.totalResidents.toLocaleString()}</p>
+              <p className="text-xs text-slate-500 flex items-center gap-1 pt-1 font-medium">
                 Active user accounts
                 <ArrowRight className="h-3 w-3 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all text-blue-600" />
               </p>
@@ -183,12 +183,12 @@ export function AdminDashboardClient({ stats }: { stats: AdminStats }) {
           {/* Card 2: Registered Addresses */}
           <Link
             href="/admin/addresses"
-            className="group bg-white rounded-xl border border-slate-200 p-5 shadow-sm hover:border-violet-300 hover:shadow transition-all flex items-start justify-between"
+            className="group bg-white rounded-2xl border border-slate-200/90 p-5 shadow-2xs hover:border-violet-300 hover:shadow-xs transition-all flex items-start justify-between"
           >
             <div className="space-y-1">
-              <p className="text-xs font-medium uppercase tracking-wider text-slate-500">Total Addresses</p>
-              <p className="text-3xl font-bold text-slate-900">{stats.totalAddresses.toLocaleString()}</p>
-              <p className="text-xs text-slate-500 flex items-center gap-1 pt-1">
+              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Total Addresses</p>
+              <p className="text-3xl font-extrabold tracking-tight text-slate-900">{stats.totalAddresses.toLocaleString()}</p>
+              <p className="text-xs text-slate-500 flex items-center gap-1 pt-1 font-medium">
                 Assigned service locations
                 <ArrowRight className="h-3 w-3 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all text-violet-600" />
               </p>
@@ -201,12 +201,12 @@ export function AdminDashboardClient({ stats }: { stats: AdminStats }) {
           {/* Card 3: Collection Zones */}
           <Link
             href="/admin/zones"
-            className="group bg-white rounded-xl border border-slate-200 p-5 shadow-sm hover:border-emerald-300 hover:shadow transition-all flex items-start justify-between"
+            className="group bg-white rounded-2xl border border-slate-200/90 p-5 shadow-2xs hover:border-emerald-300 hover:shadow-xs transition-all flex items-start justify-between"
           >
             <div className="space-y-1">
-              <p className="text-xs font-medium uppercase tracking-wider text-slate-500">Total Zones</p>
-              <p className="text-3xl font-bold text-slate-900">{stats.totalZones.toLocaleString()}</p>
-              <p className="text-xs text-slate-500 flex items-center gap-1 pt-1">
+              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Total Zones</p>
+              <p className="text-3xl font-extrabold tracking-tight text-slate-900">{stats.totalZones.toLocaleString()}</p>
+              <p className="text-xs text-slate-500 flex items-center gap-1 pt-1 font-medium">
                 Active collection sectors
                 <ArrowRight className="h-3 w-3 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all text-emerald-600" />
               </p>
@@ -219,12 +219,12 @@ export function AdminDashboardClient({ stats }: { stats: AdminStats }) {
           {/* Card 4: Upcoming Pickups */}
           <Link
             href="/admin/schedules"
-            className="group bg-white rounded-xl border border-slate-200 p-5 shadow-sm hover:border-amber-300 hover:shadow transition-all flex items-start justify-between"
+            className="group bg-white rounded-2xl border border-slate-200/90 p-5 shadow-2xs hover:border-amber-300 hover:shadow-xs transition-all flex items-start justify-between"
           >
             <div className="space-y-1">
-              <p className="text-xs font-medium uppercase tracking-wider text-slate-500">Upcoming Pickups</p>
-              <p className="text-3xl font-bold text-amber-600">{stats.upcomingPickups.toLocaleString()}</p>
-              <p className="text-xs text-slate-500 flex items-center gap-1 pt-1">
+              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Upcoming Pickups</p>
+              <p className="text-3xl font-extrabold tracking-tight text-amber-600">{stats.upcomingPickups.toLocaleString()}</p>
+              <p className="text-xs text-slate-500 flex items-center gap-1 pt-1 font-medium">
                 Scheduled for collection
                 <ArrowRight className="h-3 w-3 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all text-amber-600" />
               </p>
@@ -237,12 +237,12 @@ export function AdminDashboardClient({ stats }: { stats: AdminStats }) {
           {/* Card 5: Completed Pickups */}
           <Link
             href="/admin/schedules"
-            className="group bg-white rounded-xl border border-slate-200 p-5 shadow-sm hover:border-teal-300 hover:shadow transition-all flex items-start justify-between"
+            className="group bg-white rounded-2xl border border-slate-200/90 p-5 shadow-2xs hover:border-teal-300 hover:shadow-xs transition-all flex items-start justify-between"
           >
             <div className="space-y-1">
-              <p className="text-xs font-medium uppercase tracking-wider text-slate-500">Completed Pickups</p>
-              <p className="text-3xl font-bold text-emerald-600">{stats.completedPickups.toLocaleString()}</p>
-              <p className="text-xs text-slate-500 flex items-center gap-1 pt-1">
+              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Completed Pickups</p>
+              <p className="text-3xl font-extrabold tracking-tight text-emerald-600">{stats.completedPickups.toLocaleString()}</p>
+              <p className="text-xs text-slate-500 flex items-center gap-1 pt-1 font-medium">
                 {completionRate}% overall completion rate
                 <ArrowRight className="h-3 w-3 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all text-emerald-600" />
               </p>
@@ -255,12 +255,12 @@ export function AdminDashboardClient({ stats }: { stats: AdminStats }) {
           {/* Card 6: Missed/Skipped Pickups */}
           <Link
             href="/admin/schedules"
-            className="group bg-white rounded-xl border border-slate-200 p-5 shadow-sm hover:border-rose-300 hover:shadow transition-all flex items-start justify-between"
+            className="group bg-white rounded-2xl border border-slate-200/90 p-5 shadow-2xs hover:border-rose-300 hover:shadow-xs transition-all flex items-start justify-between"
           >
             <div className="space-y-1">
-              <p className="text-xs font-medium uppercase tracking-wider text-slate-500">Missed / Skipped</p>
-              <p className="text-3xl font-bold text-rose-600">{stats.missedSkippedPickups.toLocaleString()}</p>
-              <p className="text-xs text-slate-500 flex items-center gap-1 pt-1">
+              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Missed / Skipped</p>
+              <p className="text-3xl font-extrabold tracking-tight text-rose-600">{stats.missedSkippedPickups.toLocaleString()}</p>
+              <p className="text-xs text-slate-500 flex items-center gap-1 pt-1 font-medium">
                 {stats.missedPickups} missed · {stats.skippedPickups} skipped
                 <ArrowRight className="h-3 w-3 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all text-rose-600" />
               </p>

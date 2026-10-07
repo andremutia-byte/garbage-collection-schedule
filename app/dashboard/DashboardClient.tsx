@@ -214,14 +214,14 @@ function AddAddressModal({
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+              className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isPending}
-              className="flex-1 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-60 transition-colors flex items-center justify-center gap-2"
+              className="flex-1 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-xs hover:bg-emerald-700 disabled:opacity-60 transition-colors flex items-center justify-center gap-2 cursor-pointer"
             >
               {isPending ? (
                 <>
@@ -258,25 +258,25 @@ function AddressCard({
   };
 
   return (
-    <div className={`relative rounded-2xl border p-5 transition-all ${address.is_primary ? "border-emerald-300 bg-emerald-50/50" : "border-slate-200 bg-white"}`}>
+    <div className={`relative rounded-2xl border p-5 shadow-2xs transition-all ${address.is_primary ? "border-emerald-300 bg-emerald-50/40" : "border-slate-200 bg-white"}`}>
       {address.is_primary && (
-        <span className="absolute right-4 top-4 inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-700">
+        <span className="absolute right-4 top-4 inline-flex items-center gap-1 rounded-full bg-emerald-100 border border-emerald-200 px-2.5 py-0.5 text-xs font-semibold text-emerald-800">
           <CheckCircle2 className="h-3 w-3" /> Primary
         </span>
       )}
 
       <div className="flex items-start gap-3">
-        <div className={`mt-0.5 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl ${address.is_primary ? "bg-emerald-100 text-emerald-600" : "bg-slate-100 text-slate-500"}`}>
+        <div className={`mt-0.5 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl ${address.is_primary ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-600"}`}>
           <Home className="h-5 w-5" />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="font-semibold text-slate-900 truncate">
+          <p className="font-semibold text-slate-900 truncate text-sm sm:text-base">
             {address.street}{address.unit ? `, ${address.unit}` : ""}
           </p>
-          <p className="text-sm text-slate-500">{address.city} {address.postal_code}</p>
+          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">{address.city} {address.postal_code}</p>
           {address.zone && (
-            <div className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-blue-50 border border-blue-100 px-2.5 py-0.5 text-xs text-blue-700">
-              <MapPin className="h-3 w-3" />
+            <div className="mt-2.5 inline-flex items-center gap-1.5 rounded-full bg-blue-50 border border-blue-200 px-2.5 py-0.5 text-xs font-medium text-blue-700">
+              <MapPin className="h-3 w-3 shrink-0" />
               Zone: {address.zone.name}
             </div>
           )}
@@ -286,12 +286,12 @@ function AddressCard({
       <button
         onClick={handleRemove}
         disabled={isPending}
-        className="mt-4 w-full rounded-xl border border-red-100 bg-red-50 py-2 text-sm font-medium text-red-600 hover:bg-red-100 disabled:opacity-50 transition-colors flex items-center justify-center gap-1.5"
+        className="mt-4 w-full rounded-xl border border-red-200 bg-red-50/50 hover:bg-red-50 py-2 text-xs font-semibold text-red-600 hover:text-red-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
       >
         {isPending ? (
-          <><Loader2 className="h-4 w-4 animate-spin" /> Removing…</>
+          <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Removing…</>
         ) : (
-          <><X className="h-4 w-4" /> Remove</>
+          <><X className="h-3.5 w-3.5" /> Remove Address</>
         )}
       </button>
     </div>
@@ -306,7 +306,7 @@ function PickupCard({ pickup }: { pickup: UpcomingPickup }) {
   const isUrgent = urgency === "Today" || urgency === "Tomorrow";
 
   return (
-    <div className={`flex items-center gap-4 rounded-2xl border p-4 transition-all hover:shadow-sm ${style.bg} ${style.border}`}>
+    <div className={`flex items-center gap-4 rounded-2xl border p-4 shadow-2xs transition-all hover:shadow-xs ${style.bg} ${style.border}`}>
       <div className={`flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl ${style.bg} ${style.text} border ${style.border}`}>
         {style.icon}
       </div>
@@ -319,16 +319,16 @@ function PickupCard({ pickup }: { pickup: UpcomingPickup }) {
             </span>
           )}
         </div>
-        <p className="text-sm text-slate-600 mt-0.5">
-          <CalendarDays className="inline h-3.5 w-3.5 mr-1 -mt-0.5 text-slate-400" />
+        <p className="text-sm font-medium text-slate-700 mt-0.5">
+          <CalendarDays className="inline h-3.5 w-3.5 mr-1.5 -mt-0.5 text-slate-400" />
           {formatDate(pickup.scheduled_date)}
         </p>
-        <p className="text-xs text-slate-400 mt-0.5 truncate">
+        <p className="text-xs text-slate-500 mt-0.5 truncate">
           {pickup.address.street}{pickup.address.unit ? `, ${pickup.address.unit}` : ""}, {pickup.address.city}
         </p>
       </div>
       {!isUrgent && (
-        <span className="flex-shrink-0 text-xs font-medium text-slate-400 bg-slate-100 rounded-full px-2.5 py-1">
+        <span className="flex-shrink-0 text-xs font-medium text-slate-500 bg-white border border-slate-200/80 rounded-full px-2.5 py-1">
           {urgency}
         </span>
       )}
@@ -352,29 +352,29 @@ function NotificationSettings({ current }: { current: string }) {
   };
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-6">
-      <div className="flex items-center gap-3 mb-5">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-100 text-amber-600">
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-2xs">
+      <div className="flex items-center gap-3 mb-4 sm:mb-5">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-600 border border-amber-200/80">
           <Bell className="h-5 w-5" />
         </div>
         <div>
-          <h3 className="font-semibold text-slate-900">Reminder Preferences</h3>
-          <p className="text-sm text-slate-500">How should we notify you before collection?</p>
+          <h3 className="font-semibold text-slate-900 text-sm sm:text-base">Reminder Preferences</h3>
+          <p className="text-xs sm:text-sm text-slate-500">How should we notify you before collection?</p>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3 mb-5">
         {NOTIF_OPTIONS.map((opt) => (
           <button
             key={opt.value}
             onClick={() => setSelected(opt.value)}
-            className={`rounded-xl border p-3 text-left transition-all ${
+            className={`rounded-xl border p-3 text-left transition-all cursor-pointer ${
               selected === opt.value
-                ? "border-emerald-400 bg-emerald-50 ring-2 ring-emerald-300"
-                : "border-slate-200 bg-slate-50 hover:border-slate-300"
+                ? "border-emerald-500 bg-emerald-50/60 ring-2 ring-emerald-200"
+                : "border-slate-200 bg-slate-50/50 hover:border-slate-300 hover:bg-slate-50"
             }`}
           >
-            <p className={`text-sm font-semibold ${selected === opt.value ? "text-emerald-700" : "text-slate-800"}`}>
+            <p className={`text-sm font-semibold ${selected === opt.value ? "text-emerald-800" : "text-slate-800"}`}>
               {opt.label}
             </p>
             <p className="text-xs text-slate-500 mt-0.5">{opt.desc}</p>
@@ -386,14 +386,14 @@ function NotificationSettings({ current }: { current: string }) {
         <button
           onClick={handleSave}
           disabled={isPending || selected === current}
-          className="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-50 transition-colors flex items-center gap-2"
+          className="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-xs hover:bg-emerald-700 disabled:opacity-50 transition-colors flex items-center gap-2 cursor-pointer"
         >
           {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
           Save Preference
         </button>
         {saved && (
-          <span className="flex items-center gap-1.5 text-sm text-emerald-600 font-medium">
-            <CheckCircle2 className="h-4 w-4" /> Saved!
+          <span className="flex items-center gap-1.5 text-xs sm:text-sm text-emerald-700 font-semibold bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full">
+            <CheckCircle2 className="h-4 w-4 text-emerald-600" /> Saved!
           </span>
         )}
       </div>
@@ -405,17 +405,17 @@ function NotificationSettings({ current }: { current: string }) {
 
 function EmptyAddresses({ onAdd }: { onAdd: () => void }) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 p-10 text-center">
-      <div className="flex h-14 w-14 items-center justify-center rounded-full bg-slate-200 text-slate-400 mb-4">
-        <Home className="h-7 w-7" />
+    <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/60 p-8 sm:p-10 text-center">
+      <div className="flex h-13 w-13 items-center justify-center rounded-2xl bg-slate-100 text-slate-400 mb-3 border border-slate-200">
+        <Home className="h-6 w-6" />
       </div>
-      <p className="font-semibold text-slate-700">No addresses yet</p>
-      <p className="text-sm text-slate-500 mt-1 max-w-xs">
+      <p className="font-semibold text-slate-800 text-sm sm:text-base">No addresses yet</p>
+      <p className="text-xs sm:text-sm text-slate-500 mt-1 max-w-xs leading-relaxed">
         Add your home address to start seeing your personalized collection schedule.
       </p>
       <button
         onClick={onAdd}
-        className="mt-5 inline-flex items-center gap-2 rounded-full bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 transition-colors"
+        className="mt-4 inline-flex items-center gap-2 rounded-full bg-emerald-600 px-5 py-2.5 text-xs sm:text-sm font-semibold text-white shadow-xs hover:bg-emerald-700 transition-colors cursor-pointer"
       >
         <Plus className="h-4 w-4" /> Add First Address
       </button>
@@ -425,13 +425,13 @@ function EmptyAddresses({ onAdd }: { onAdd: () => void }) {
 
 function EmptyPickups() {
   return (
-    <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 p-10 text-center">
-      <div className="flex h-14 w-14 items-center justify-center rounded-full bg-slate-200 text-slate-400 mb-4">
-        <CalendarDays className="h-7 w-7" />
+    <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/60 p-8 sm:p-10 text-center">
+      <div className="flex h-13 w-13 items-center justify-center rounded-2xl bg-slate-100 text-slate-400 mb-3 border border-slate-200">
+        <CalendarDays className="h-6 w-6" />
       </div>
-      <p className="font-semibold text-slate-700">No upcoming pickups</p>
-      <p className="text-sm text-slate-500 mt-1 max-w-xs">
-        No collection events scheduled in the next 30 days for your addresses.
+      <p className="font-semibold text-slate-800 text-sm sm:text-base">No upcoming pickups</p>
+      <p className="text-xs sm:text-sm text-slate-500 mt-1 max-w-xs leading-relaxed">
+        No collection events scheduled in the next 30 days for your registered address.
       </p>
     </div>
   );
@@ -452,26 +452,26 @@ export function DashboardClient({ data, zones, notifications }: DashboardClientP
   return (
     <>
       {/* ── Page header ── */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">
+      <div className="mb-6 sm:mb-8">
+        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
           My Schedule
         </h1>
-        <p className="mt-1 text-slate-500">
-          Manage your addresses and view upcoming collection events.
+        <p className="mt-1 text-sm sm:text-base text-slate-500">
+          Manage your household address and track scheduled waste collections.
         </p>
       </div>
 
       {/* ── Next pickup hero ── */}
       {nextPickup && (
-        <div className="mb-8 rounded-2xl bg-gradient-to-br from-emerald-600 to-emerald-700 p-6 text-white shadow-lg shadow-emerald-200">
-          <p className="text-sm font-medium text-emerald-100 mb-1">Next Collection</p>
-          <div className="flex items-center gap-3 flex-wrap">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/20 backdrop-blur-sm">
+        <div className="mb-6 sm:mb-8 rounded-2xl bg-gradient-to-r from-emerald-700 via-emerald-600 to-teal-700 p-5 sm:p-6 text-white shadow-md border border-emerald-600">
+          <p className="text-xs font-semibold uppercase tracking-wider text-emerald-200 mb-1.5">Next Scheduled Collection</p>
+          <div className="flex items-center gap-3 sm:gap-4 flex-wrap">
+            <div className="flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-xl bg-white/20 backdrop-blur-xs shrink-0 border border-white/20">
               {getCategoryStyle(nextPickup.waste_category.name, nextPickup.waste_category.color_code).icon}
             </div>
             <div>
-              <p className="text-xl font-bold">{nextPickup.waste_category.name}</p>
-              <p className="text-emerald-100 text-sm">
+              <p className="text-xl sm:text-2xl font-bold tracking-tight">{nextPickup.waste_category.name}</p>
+              <p className="text-emerald-100 text-xs sm:text-sm font-medium mt-0.5">
                 {formatDate(nextPickup.scheduled_date)} &bull; {daysUntil(nextPickup.scheduled_date)}
               </p>
             </div>

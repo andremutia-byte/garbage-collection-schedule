@@ -152,7 +152,7 @@ export function Field({
 }
 
 const inputCls =
-  "w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition";
+  "w-full rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 focus:bg-white transition-all";
 
 export function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
   return <input {...props} className={inputCls} />;
@@ -182,7 +182,7 @@ export function SubmitButton({
         <button
           type="button"
           onClick={onCancel}
-          className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+          className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
         >
           Cancel
         </button>
@@ -190,7 +190,7 @@ export function SubmitButton({
       <button
         type="submit"
         disabled={loading}
-        className="flex-1 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-60 transition-colors flex items-center justify-center gap-2"
+        className="flex-1 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-xs hover:bg-emerald-700 disabled:opacity-60 transition-colors flex items-center justify-center gap-2 cursor-pointer"
       >
         {loading && <Loader2 className="h-4 w-4 animate-spin" />}
         {loading ? "Saving…" : label}
@@ -212,12 +212,12 @@ export function EmptyState({
   action?: ReactNode;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 p-12 text-center">
-      <div className="flex h-14 w-14 items-center justify-center rounded-full bg-slate-200 text-slate-400 mb-4">
-        <Icon className="h-7 w-7" />
+    <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/60 p-10 sm:p-12 text-center">
+      <div className="flex h-13 w-13 items-center justify-center rounded-2xl bg-slate-100 text-slate-400 mb-3.5 border border-slate-200">
+        <Icon className="h-6 w-6" />
       </div>
-      <p className="font-semibold text-slate-700">{title}</p>
-      {subtitle && <p className="text-sm text-slate-500 mt-1 max-w-xs">{subtitle}</p>}
+      <p className="font-semibold text-slate-800 text-sm sm:text-base">{title}</p>
+      {subtitle && <p className="text-xs sm:text-sm text-slate-500 mt-1 max-w-xs leading-relaxed">{subtitle}</p>}
       {action && <div className="mt-5">{action}</div>}
     </div>
   );
@@ -234,10 +234,10 @@ export function PageHeader({
   action?: ReactNode;
 }) {
   return (
-    <div className="flex items-start justify-between mb-6 gap-4">
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
       <div>
-        <h1 className="text-xl font-bold text-slate-900">{title}</h1>
-        {subtitle && <p className="text-sm text-slate-500 mt-0.5">{subtitle}</p>}
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">{title}</h1>
+        {subtitle && <p className="text-xs sm:text-sm text-slate-500 mt-0.5">{subtitle}</p>}
       </div>
       {action && <div className="shrink-0">{action}</div>}
     </div>
