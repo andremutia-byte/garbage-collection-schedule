@@ -1,6 +1,6 @@
 # Garbage Collection Schedule System
 
-A modern, responsive web application for managing municipal garbage collection schedules, pickup routes, zone assignments, and resident notifications. Built with **Next.js 16**, **TypeScript**, **Tailwind CSS**, **Clerk Authentication**, and **Supabase (PostgreSQL with Row Level Security)**.
+A modern, responsive web application for managing municipal garbage collection schedules, pickup generation, address registrations, and resident notifications. Built with **Next.js 16**, **TypeScript**, **Tailwind CSS**, **Clerk Authentication**, and **Supabase (PostgreSQL with Row Level Security)**.
 
 ---
 
@@ -26,8 +26,8 @@ A modern, responsive web application for managing municipal garbage collection s
 ## Overview
 
 The **Garbage Collection Schedule System** bridges municipal sanitation departments and residents. It provides:
-- **Residents** with instant visibility into their upcoming trash and recycling pickup days, localized zone guidelines, collection schedules, and real-time alerts.
-- **Administrators and Dispatchers** with full operational control over service zones, resident records, addresses, scheduled pickups, pickup batch generation, and aggregated activity statistics.
+- **Residents** with instant visibility into their upcoming trash and recycling pickup days, collection schedules, and real-time alerts.
+- **Administrators and Dispatchers** with full operational control over resident records, registered addresses, scheduled pickups, pickup batch generation, and aggregated activity statistics.
 
 ---
 
@@ -35,17 +35,16 @@ The **Garbage Collection Schedule System** bridges municipal sanitation departme
 
 ### Resident Experience (`/dashboard`)
 - **Upcoming Pickups Card:** Displays the next scheduled pickup date, waste category (Biodegradable, Non-Biodegradable, Recyclable, Hazardous), and status badge (Scheduled, In Progress, Completed, Missed).
-- **Service Details & Assigned Zone:** View registered address, assigned collection zone, pickup frequency, and local waste disposal instructions.
+- **Service Details & Addresses:** Register household addresses with default Butuan City 8600 location, view pickup frequency, and local waste disposal instructions.
 - **Interactive Collection Calendar:** Filter schedules by waste category, inspect collection dates, and view collection time windows.
 - **Notification Inbox:** Real-time collection updates, route changes, and holiday reschedule notices with mark-as-read tracking.
 
 ### Administrator & Dispatcher Portal (`/admin`)
-- **Operations Dashboard:** Live metrics including Total Residents, Total Addresses, Total Zones, Upcoming Pickups, Completed Pickups, and Missed Pickups.
+- **Operations Dashboard:** Live metrics including Total Residents, Total Addresses, Upcoming Pickups, Completed Pickups, and Missed Pickups.
 - **Activity & Distribution Reports:** Real-time collection activity feed and category breakdowns calculated directly from Supabase.
-- **Zone Management (`/admin/zones`):** Create and edit municipal zones with specific colors, collection days, and pickup instructions.
-- **Address Registry (`/admin/addresses`):** Register household addresses and link them directly to designated service zones.
-- **Resident Directory (`/admin/residents`):** Manage residents, review linked Clerk identities, and update service assignments.
-- **Collection Schedules (`/admin/schedules`):** Define recurring collection schedules and generate batch pickup tasks across zones.
+- **Address Registry (`/admin/addresses`):** Register household addresses and manage service locations.
+- **Resident Directory (`/admin/residents`):** Manage residents, review linked Clerk identities, and update role assignments.
+- **Collection Schedules (`/admin/schedules`):** Define recurring collection schedules and generate batch pickup tasks city-wide across registered addresses.
 
 ---
 
@@ -172,11 +171,10 @@ npm run lint
 ```text
 ├── app/
 │   ├── actions/               # Server Actions (admin, dashboard, notifications)
-│   ├── admin/                 # Admin portal pages (zones, addresses, residents, schedules)
+│   ├── admin/                 # Admin portal pages (addresses, residents, schedules)
 │   │   ├── addresses/         # Address registry management
-│   │   ├── residents/         # Resident profile & assignment management
-│   │   ├── schedules/         # Collection schedule & pickup generator
-│   │   └── zones/             # Service zone configuration
+│   │   ├── residents/         # Resident profile & role management
+│   │   └── schedules/         # Collection schedule & pickup generator
 │   ├── api/
 │   │   └── webhooks/clerk/    # Webhook handler for Clerk user synchronization
 │   ├── dashboard/             # Resident portal (schedules, notifications, calendar)

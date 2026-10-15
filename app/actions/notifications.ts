@@ -81,13 +81,11 @@ function buildReminderMessage(
 // ─── generatePickupReminders ──────────────────────────────────────────────────
 
 /**
- * Creates reminder notifications for all upcoming pickups in a zone (or all zones).
+ * Creates reminder notifications for all upcoming pickups.
  * Only generates notifications for pickups that don't already have one.
  * Admin-only — uses service-role client to bypass RLS on notifications.
  */
-export async function generatePickupReminders(
-  zoneId?: string
-): Promise<ActionResult> {
+export async function generatePickupReminders(): Promise<ActionResult> {
   await requireAdmin();
   const db = createAdminSupabaseClient();
 
@@ -96,16 +94,15 @@ export async function generatePickupReminders(
     .toISOString()
     .slice(0, 10);
 
-  // Fetch upcoming pickups (optionally scoped to a zone via zone→addresses)
-  let pickupQuery = db
+  // Fetch upcoming pickups
+  const { data: pickups, error: pickupErr } = await db
     .from("pickups")
     .select(
       `
       id,
       scheduled_date,
       address_id,
-      waste_category:waste_categories ( name ),
-      address:addresses ( zone_id )
+      waste_category:waste_categories ( name )
     `
     )
     .eq("status", "scheduled")
@@ -113,15 +110,11 @@ export async function generatePickupReminders(
     .gte("scheduled_date", today)
     .lte("scheduled_date", future);
 
-  const { data: pickups, error: pickupErr } = await pickupQuery;
   if (pickupErr) return { success: false, error: pickupErr.message };
   if (!pickups || pickups.length === 0)
     return { success: true, count: 0 };
 
-  // Filter by zone if requested
-  const filtered = zoneId
-    ? pickups.filter((p) => (p.address as any)?.zone_id === zoneId)
-    : pickups;
+  const filtered = pickups;
 
   // Find existing notifications to avoid duplicates
   const pickupIds = filtered.map((p) => p.id);

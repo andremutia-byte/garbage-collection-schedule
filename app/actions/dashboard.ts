@@ -14,15 +14,16 @@ export interface ActionResult {
   error?: string;
 }
 
-export interface AddressWithZone {
+export interface AddressItem {
   id: string;
   street: string;
   unit: string | null;
   city: string;
   postal_code: string;
   is_primary: boolean;
-  zone: { id: string; name: string; description: string | null } | null;
 }
+
+export type AddressWithZone = AddressItem;
 
 export interface UpcomingPickup {
   id: string;
@@ -33,7 +34,7 @@ export interface UpcomingPickup {
 }
 
 export interface DashboardData {
-  addresses: AddressWithZone[];
+  addresses: AddressItem[];
   upcomingPickups: UpcomingPickup[];
   allPickups: UpcomingPickup[];
   notificationPref: string;
@@ -52,7 +53,7 @@ export async function getDashboardData(): Promise<DashboardData | null> {
 
   const supabase = await createServerSupabaseClient();
 
-  // Fetch user's addresses with their zones
+  // Fetch user's addresses
   const { data: userAddresses } = await supabase
     .from("user_addresses")
     .select(
@@ -64,18 +65,13 @@ export async function getDashboardData(): Promise<DashboardData | null> {
         unit,
         city,
         postal_code,
-        deleted_at,
-        zone:zones (
-          id,
-          name,
-          description
-        )
+        deleted_at
       )
     `
     )
     .eq("user_id", userId);
 
-  const addresses: AddressWithZone[] = (userAddresses ?? [])
+  const addresses: AddressItem[] = (userAddresses ?? [])
     .filter((ua) => !(ua.address as any)?.deleted_at) // exclude soft-deleted
     .map((ua) => {
       const addr = ua.address as any;
@@ -86,7 +82,6 @@ export async function getDashboardData(): Promise<DashboardData | null> {
         city: addr?.city ?? "",
         postal_code: addr?.postal_code ?? "",
         is_primary: ua.is_primary,
-        zone: addr?.zone ?? null,
       };
     });
 
@@ -124,8 +119,6 @@ export async function getDashboardData(): Promise<DashboardData | null> {
       waste_category: (p.waste_category as any) ?? { name: "", color_code: null },
     }));
 
-    // upcomingPickups is just allPickups filtered for future dates and 'scheduled' status,
-    // but the original code sorted ascending. Let's just re-sort the filtered upcoming ones.
     upcomingPickups = allPickups
       .filter((p) => p.scheduled_date >= today && p.scheduled_date <= future && p.status === "scheduled")
       .sort((a, b) => a.scheduled_date.localeCompare(b.scheduled_date))
@@ -157,9 +150,8 @@ export async function addAddress(formData: FormData): Promise<ActionResult> {
 
   const street = (formData.get("street") as string)?.trim();
   const unit = (formData.get("unit") as string)?.trim() || null;
-  const city = (formData.get("city") as string)?.trim();
-  const postalCode = (formData.get("postal_code") as string)?.trim();
-  const zoneId = (formData.get("zone_id") as string)?.trim() || null;
+  const city = (formData.get("city") as string)?.trim() || "Butuan City";
+  const postalCode = (formData.get("postal_code") as string)?.trim() || "8600";
 
   if (!street || !city || !postalCode) {
     return { success: false, error: "Street, city and postal code are required." };
@@ -177,7 +169,7 @@ export async function addAddress(formData: FormData): Promise<ActionResult> {
   // Find existing address matching (street, unit, city, postal_code)
   let addrQuery = admin
     .from("addresses")
-    .select("id, zone_id, deleted_at")
+    .select("id, deleted_at")
     .eq("street", street)
     .eq("city", city)
     .eq("postal_code", postalCode);
@@ -205,14 +197,7 @@ export async function addAddress(formData: FormData): Promise<ActionResult> {
         .update({
           deleted_at: null,
           updated_at: new Date().toISOString(),
-          ...(zoneId && !existingAddress.zone_id ? { zone_id: zoneId } : {}),
         })
-        .eq("id", addressId);
-    } else if (zoneId && !existingAddress.zone_id) {
-      // If address did not have a zone assigned and resident selected one, update it
-      await admin
-        .from("addresses")
-        .update({ zone_id: zoneId, updated_at: new Date().toISOString() })
         .eq("id", addressId);
     }
   } else {
@@ -224,7 +209,6 @@ export async function addAddress(formData: FormData): Promise<ActionResult> {
         unit,
         city,
         postal_code: postalCode,
-        zone_id: zoneId,
       })
       .select("id")
       .single();
@@ -340,17 +324,4 @@ export async function updateNotificationPref(
 
   revalidatePath("/dashboard");
   return { success: true };
-}
-
-// ─────────────────────────────────────────────
-// Fetch all zones (for address form dropdown)
-// ─────────────────────────────────────────────
-export async function getZones() {
-  const supabase = await createServerSupabaseClient();
-  const { data } = await supabase
-    .from("zones")
-    .select("id, name, description")
-    .is("deleted_at", null)
-    .order("name");
-  return data ?? [];
 }

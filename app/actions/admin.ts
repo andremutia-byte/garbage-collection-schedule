@@ -50,14 +50,12 @@ export interface CollectionActivityItem {
     city: string;
     postal_code: string;
   };
-  zone_name: string | null;
   resident_email: string | null;
 }
 
 export interface AdminStats {
   totalResidents: number;
   totalAddresses: number;
-  totalZones: number;
   upcomingPickups: number;
   completedPickups: number;
   missedPickups: number;
@@ -74,10 +72,9 @@ export async function getAdminStats(): Promise<AdminStats> {
   const db = createAdminSupabaseClient();
   const today = new Date().toISOString().slice(0, 10);
 
-  const [residents, addresses, zones, categories, pickups, activity] = await Promise.all([
+  const [residents, addresses, categories, pickups, activity] = await Promise.all([
     db.from("users").select("*", { count: "exact", head: true }).is("deleted_at", null),
     db.from("addresses").select("*", { count: "exact", head: true }).is("deleted_at", null),
-    db.from("zones").select("*", { count: "exact", head: true }).is("deleted_at", null),
     db.from("waste_categories").select("id, name, color_code").order("name"),
     db.from("pickups").select("id, status, scheduled_date, waste_category_id").is("deleted_at", null),
     db.from("pickups").select(`
@@ -88,7 +85,6 @@ export async function getAdminStats(): Promise<AdminStats> {
       completion_time,
       addresses (
         id, street, unit, city, postal_code,
-        zones ( id, name ),
         user_addresses (
           user_id,
           users ( id, email )
@@ -171,7 +167,6 @@ export async function getAdminStats(): Promise<AdminStats> {
         city: addr?.city ?? "",
         postal_code: addr?.postal_code ?? "",
       },
-      zone_name: addr?.zones?.name ?? null,
       resident_email: residentEmail,
     };
   });
@@ -179,7 +174,6 @@ export async function getAdminStats(): Promise<AdminStats> {
   return {
     totalResidents: residents.count ?? 0,
     totalAddresses: addresses.count ?? 0,
-    totalZones: zones.count ?? 0,
     upcomingPickups: upcomingCount,
     completedPickups: completedCount,
     missedPickups: missedCount,
@@ -285,8 +279,6 @@ export interface AdminAddress {
   unit: string | null;
   city: string;
   postal_code: string;
-  zone_id: string | null;
-  zone_name: string | null;
   created_at: string;
   resident_count: number;
 }
@@ -297,7 +289,7 @@ export async function getAdminAddresses(): Promise<AdminAddress[]> {
 
   const { data: addresses } = await db
     .from("addresses")
-    .select("id, street, unit, city, postal_code, zone_id, created_at, zones(name)")
+    .select("id, street, unit, city, postal_code, created_at")
     .is("deleted_at", null)
     .order("city")
     .order("street");
@@ -321,27 +313,9 @@ export async function getAdminAddresses(): Promise<AdminAddress[]> {
     unit: a.unit,
     city: a.city,
     postal_code: a.postal_code,
-    zone_id: a.zone_id,
-    zone_name: (a.zones as any)?.name ?? null,
     created_at: a.created_at,
     resident_count: residentCountByAddr[a.id] ?? 0,
   }));
-}
-
-export async function updateAddressZone(
-  addressId: string,
-  zoneId: string | null
-): Promise<ActionResult> {
-  await requireAdmin();
-  const db = createAdminSupabaseClient();
-  const { error } = await db
-    .from("addresses")
-    .update({ zone_id: zoneId, updated_at: new Date().toISOString() })
-    .eq("id", addressId);
-  if (error) return { success: false, error: error.message };
-  revalidatePath("/admin/addresses");
-  revalidatePath("/dashboard");
-  return { success: true };
 }
 
 export async function adminDeleteAddress(addressId: string): Promise<ActionResult> {
@@ -353,123 +327,6 @@ export async function adminDeleteAddress(addressId: string): Promise<ActionResul
     .eq("id", addressId);
   if (error) return { success: false, error: error.message };
   revalidatePath("/admin/addresses");
-  return { success: true };
-}
-
-// ─────────────────────────────────────────────
-// Zones
-// ─────────────────────────────────────────────
-export interface AdminZone {
-  id: string;
-  name: string;
-  description: string | null;
-  created_at: string;
-  address_count: number;
-  schedule_count: number;
-}
-
-export async function getAdminZones(): Promise<AdminZone[]> {
-  await requireAdmin();
-  const db = createAdminSupabaseClient();
-
-  const { data: zones } = await db
-    .from("zones")
-    .select("id, name, description, created_at")
-    .is("deleted_at", null)
-    .order("name");
-
-  if (!zones || zones.length === 0) return [];
-
-  const zoneIds = zones.map((z) => z.id);
-  const [addrRes, schedRes] = await Promise.all([
-    db.from("addresses").select("zone_id").in("zone_id", zoneIds).is("deleted_at", null),
-    db.from("schedules").select("zone_id").in("zone_id", zoneIds).is("deleted_at", null),
-  ]);
-
-  const addrCount: Record<string, number> = {};
-  for (const a of addrRes.data ?? []) {
-    if (a.zone_id) addrCount[a.zone_id] = (addrCount[a.zone_id] ?? 0) + 1;
-  }
-  const schedCount: Record<string, number> = {};
-  for (const s of schedRes.data ?? []) {
-    schedCount[s.zone_id] = (schedCount[s.zone_id] ?? 0) + 1;
-  }
-
-  return zones.map((z) => ({
-    id: z.id,
-    name: z.name,
-    description: z.description,
-    created_at: z.created_at,
-    address_count: addrCount[z.id] ?? 0,
-    schedule_count: schedCount[z.id] ?? 0,
-  }));
-}
-
-export async function createZone(formData: FormData): Promise<ActionResult<{ id: string }>> {
-  await requireAdmin();
-  const name = (formData.get("name") as string)?.trim();
-  const description = (formData.get("description") as string)?.trim() || null;
-
-  if (!name) return { success: false, error: "Zone name is required." };
-
-  const db = createAdminSupabaseClient();
-  const { data, error } = await db
-    .from("zones")
-    .insert({ name, description })
-    .select("id")
-    .single();
-
-  if (error) return { success: false, error: error.message };
-  revalidatePath("/admin/zones");
-  revalidatePath("/dashboard");
-  return { success: true, data: { id: data.id } };
-}
-
-export async function updateZone(
-  zoneId: string,
-  formData: FormData
-): Promise<ActionResult> {
-  await requireAdmin();
-  const name = (formData.get("name") as string)?.trim();
-  const description = (formData.get("description") as string)?.trim() || null;
-
-  if (!name) return { success: false, error: "Zone name is required." };
-
-  const db = createAdminSupabaseClient();
-  const { error } = await db
-    .from("zones")
-    .update({ name, description, updated_at: new Date().toISOString() })
-    .eq("id", zoneId);
-
-  if (error) return { success: false, error: error.message };
-  revalidatePath("/admin/zones");
-  revalidatePath("/dashboard");
-  return { success: true };
-}
-
-export async function deleteZone(zoneId: string): Promise<ActionResult> {
-  await requireAdmin();
-  const db = createAdminSupabaseClient();
-
-  // Check if any addresses or schedules are tied to this zone
-  const [addrRes, schedRes] = await Promise.all([
-    db.from("addresses").select("id", { count: "exact", head: true }).eq("zone_id", zoneId).is("deleted_at", null),
-    db.from("schedules").select("id", { count: "exact", head: true }).eq("zone_id", zoneId).is("deleted_at", null),
-  ]);
-  if ((addrRes.count ?? 0) > 0) {
-    return { success: false, error: `Cannot delete: ${addrRes.count} address(es) are assigned to this zone.` };
-  }
-  if ((schedRes.count ?? 0) > 0) {
-    return { success: false, error: `Cannot delete: ${schedRes.count} schedule(s) reference this zone.` };
-  }
-
-  const { error } = await db
-    .from("zones")
-    .update({ deleted_at: new Date().toISOString(), updated_at: new Date().toISOString() })
-    .eq("id", zoneId);
-
-  if (error) return { success: false, error: error.message };
-  revalidatePath("/admin/zones");
   return { success: true };
 }
 
@@ -541,8 +398,6 @@ export async function updateCategory(
 // ─────────────────────────────────────────────
 export interface AdminSchedule {
   id: string;
-  zone_id: string;
-  zone_name: string;
   waste_category_id: string;
   category_name: string;
   category_color: string | null;
@@ -561,8 +416,7 @@ export async function getAdminSchedules(): Promise<AdminSchedule[]> {
   const { data } = await db
     .from("schedules")
     .select(`
-      id, zone_id, waste_category_id, frequency, day_of_week, start_date, end_date,
-      zones ( name ),
+      id, waste_category_id, frequency, day_of_week, start_date, end_date,
       waste_categories ( name, color_code )
     `)
     .is("deleted_at", null)
@@ -570,8 +424,6 @@ export async function getAdminSchedules(): Promise<AdminSchedule[]> {
 
   return (data ?? []).map((s) => ({
     id: s.id,
-    zone_id: s.zone_id,
-    zone_name: (s.zones as any)?.name ?? "—",
     waste_category_id: s.waste_category_id,
     category_name: (s.waste_categories as any)?.name ?? "—",
     category_color: (s.waste_categories as any)?.color_code ?? null,
@@ -584,15 +436,14 @@ export async function getAdminSchedules(): Promise<AdminSchedule[]> {
 
 export async function createSchedule(formData: FormData): Promise<ActionResult<{ id: string }>> {
   await requireAdmin();
-  const zone_id = (formData.get("zone_id") as string)?.trim();
   const waste_category_id = (formData.get("waste_category_id") as string)?.trim();
   const frequency = (formData.get("frequency") as string)?.trim() as "weekly" | "biweekly" | "monthly" | "custom";
   const day_of_week_str = (formData.get("day_of_week") as string)?.trim();
   const start_date = (formData.get("start_date") as string)?.trim();
   const end_date = (formData.get("end_date") as string)?.trim() || null;
 
-  if (!zone_id || !waste_category_id || !frequency || !start_date) {
-    return { success: false, error: "Zone, category, frequency, and start date are required." };
+  if (!waste_category_id || !frequency || !start_date) {
+    return { success: false, error: "Category, frequency, and start date are required." };
   }
 
   const day_of_week = day_of_week_str !== "" && day_of_week_str !== null ? parseInt(day_of_week_str, 10) : null;
@@ -600,7 +451,7 @@ export async function createSchedule(formData: FormData): Promise<ActionResult<{
   const db = createAdminSupabaseClient();
   const { data, error } = await db
     .from("schedules")
-    .insert({ zone_id, waste_category_id, frequency, day_of_week, start_date, end_date })
+    .insert({ waste_category_id, frequency, day_of_week, start_date, end_date })
     .select("id")
     .single();
 
@@ -614,15 +465,14 @@ export async function updateSchedule(
   formData: FormData
 ): Promise<ActionResult> {
   await requireAdmin();
-  const zone_id = (formData.get("zone_id") as string)?.trim();
   const waste_category_id = (formData.get("waste_category_id") as string)?.trim();
   const frequency = (formData.get("frequency") as string)?.trim() as "weekly" | "biweekly" | "monthly" | "custom";
   const day_of_week_str = (formData.get("day_of_week") as string)?.trim();
   const start_date = (formData.get("start_date") as string)?.trim();
   const end_date = (formData.get("end_date") as string)?.trim() || null;
 
-  if (!zone_id || !waste_category_id || !frequency || !start_date) {
-    return { success: false, error: "Zone, category, frequency, and start date are required." };
+  if (!waste_category_id || !frequency || !start_date) {
+    return { success: false, error: "Category, frequency, and start date are required." };
   }
 
   const day_of_week = day_of_week_str !== "" && day_of_week_str !== null ? parseInt(day_of_week_str, 10) : null;
@@ -630,7 +480,7 @@ export async function updateSchedule(
   const db = createAdminSupabaseClient();
   const { error } = await db
     .from("schedules")
-    .update({ zone_id, waste_category_id, frequency, day_of_week, start_date, end_date, updated_at: new Date().toISOString() })
+    .update({ waste_category_id, frequency, day_of_week, start_date, end_date, updated_at: new Date().toISOString() })
     .eq("id", scheduleId);
 
   if (error) return { success: false, error: error.message };
@@ -656,7 +506,6 @@ export async function deleteSchedule(scheduleId: string): Promise<ActionResult> 
 export interface AdminPickup {
   id: string;
   address: { street: string; city: string; postal_code: string };
-  zone_name: string | null;
   waste_category: { name: string; color_code: string | null };
   scheduled_date: string;
   status: string;
@@ -671,7 +520,7 @@ export async function getAdminPickups(limit = 50): Promise<AdminPickup[]> {
     .from("pickups")
     .select(`
       id, scheduled_date, status, notes,
-      addresses ( street, city, postal_code, zone_id, zones(name) ),
+      addresses ( street, city, postal_code ),
       waste_categories ( name, color_code )
     `)
     .is("deleted_at", null)
@@ -683,7 +532,6 @@ export async function getAdminPickups(limit = 50): Promise<AdminPickup[]> {
     return {
       id: p.id,
       address: { street: addr?.street ?? "", city: addr?.city ?? "", postal_code: addr?.postal_code ?? "" },
-      zone_name: addr?.zones?.name ?? null,
       waste_category: { name: (p.waste_categories as any)?.name ?? "", color_code: (p.waste_categories as any)?.color_code ?? null },
       scheduled_date: p.scheduled_date,
       status: p.status,
@@ -759,7 +607,7 @@ export async function generatePickupsFromSchedule(
   // Fetch the schedule rule
   const { data: sched, error: schedErr } = await db
     .from("schedules")
-    .select("zone_id, waste_category_id, frequency, day_of_week, start_date, end_date")
+    .select("waste_category_id, frequency, day_of_week, start_date, end_date")
     .eq("id", scheduleId)
     .is("deleted_at", null)
     .single();
@@ -767,15 +615,14 @@ export async function generatePickupsFromSchedule(
   if (schedErr || !sched) return { success: false, error: "Schedule not found." };
   if (sched.day_of_week === null) return { success: false, error: "Schedule has no day_of_week set." };
 
-  // Fetch all addresses in the zone
+  // Fetch all active addresses city-wide
   const { data: addrs } = await db
     .from("addresses")
     .select("id")
-    .eq("zone_id", sched.zone_id)
     .is("deleted_at", null);
 
   if (!addrs || addrs.length === 0) {
-    return { success: false, error: "No addresses found in this zone." };
+    return { success: false, error: "No active addresses found." };
   }
 
   // Generate date list
@@ -834,7 +681,7 @@ export async function getAdminAddressList() {
   const db = createAdminSupabaseClient();
   const { data } = await db
     .from("addresses")
-    .select("id, street, unit, city, postal_code, zone_id, zones(name)")
+    .select("id, street, unit, city, postal_code")
     .is("deleted_at", null)
     .order("city")
     .order("street")
@@ -842,6 +689,5 @@ export async function getAdminAddressList() {
   return (data ?? []).map((a) => ({
     id: a.id,
     label: `${a.street}${a.unit ? ` ${a.unit}` : ""}, ${a.city} ${a.postal_code}`,
-    zone_name: (a.zones as any)?.name ?? null,
   }));
 }

@@ -5,7 +5,6 @@ import {
   Bell,
   CalendarDays,
   CheckCircle2,
-  ChevronRight,
   Home,
   Loader2,
   MapPin,
@@ -18,7 +17,7 @@ import {
 } from "lucide-react";
 import type {
   DashboardData,
-  AddressWithZone,
+  AddressItem,
   UpcomingPickup,
 } from "@/app/actions/dashboard";
 import {
@@ -30,15 +29,8 @@ import type { ResidentNotification } from "@/app/actions/notifications";
 import { NotificationsPanel } from "./NotificationsPanel";
 import { CollectionSchedule } from "./CollectionSchedule";
 
-interface Zone {
-  id: string;
-  name: string;
-  description: string | null;
-}
-
 interface DashboardClientProps {
   data: DashboardData;
-  zones: Zone[];
   notifications: ResidentNotification[];
 }
 
@@ -82,11 +74,9 @@ const NOTIF_OPTIONS = [
 // ─── Add Address Modal ─────────────────────────────────────────────────────────
 
 function AddAddressModal({
-  zones,
   onClose,
   onSuccess,
 }: {
-  zones: Zone[];
   onClose: () => void;
   onSuccess: () => void;
 }) {
@@ -119,7 +109,7 @@ function AddAddressModal({
           </div>
           <button
             onClick={onClose}
-            className="rounded-full p-2 hover:bg-slate-100 transition-colors text-slate-400 hover:text-slate-600"
+            className="rounded-full p-2 hover:bg-slate-100 transition-colors text-slate-400 hover:text-slate-600 cursor-pointer"
           >
             <X className="h-5 w-5" />
           </button>
@@ -164,7 +154,8 @@ function AddAddressModal({
                 name="city"
                 type="text"
                 required
-                placeholder="Springfield"
+                defaultValue="Butuan City"
+                placeholder="Butuan City"
                 className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition"
               />
             </div>
@@ -177,31 +168,12 @@ function AddAddressModal({
                 name="postal_code"
                 type="text"
                 required
-                placeholder="12345"
+                defaultValue="8600"
+                placeholder="8600"
                 className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition"
               />
             </div>
           </div>
-
-          {zones.length > 0 && (
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5" htmlFor="addr-zone">
-                Collection Zone <span className="text-slate-400 font-normal">(optional)</span>
-              </label>
-              <select
-                id="addr-zone"
-                name="zone_id"
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition"
-              >
-                <option value="">Select a zone…</option>
-                {zones.map((z) => (
-                  <option key={z.id} value={z.id}>
-                    {z.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
 
           {error && (
             <div className="flex items-center gap-2 rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
@@ -245,7 +217,7 @@ function AddressCard({
   address,
   onRemove,
 }: {
-  address: AddressWithZone;
+  address: AddressItem;
   onRemove: (id: string) => void;
 }) {
   const [isPending, startTransition] = useTransition();
@@ -274,12 +246,6 @@ function AddressCard({
             {address.street}{address.unit ? `, ${address.unit}` : ""}
           </p>
           <p className="text-xs sm:text-sm text-slate-500 mt-0.5">{address.city} {address.postal_code}</p>
-          {address.zone && (
-            <div className="mt-2.5 inline-flex items-center gap-1.5 rounded-full bg-blue-50 border border-blue-200 px-2.5 py-0.5 text-xs font-medium text-blue-700">
-              <MapPin className="h-3 w-3 shrink-0" />
-              Zone: {address.zone.name}
-            </div>
-          )}
         </div>
       </div>
 
@@ -439,9 +405,9 @@ function EmptyPickups() {
 
 // ─── Main Dashboard ────────────────────────────────────────────────────────────
 
-export function DashboardClient({ data, zones, notifications }: DashboardClientProps) {
+export function DashboardClient({ data, notifications }: DashboardClientProps) {
   const [showAddModal, setShowAddModal] = useState(false);
-  const [addresses, setAddresses] = useState<AddressWithZone[]>(data.addresses);
+  const [addresses, setAddresses] = useState<AddressItem[]>(data.addresses);
 
   const handleAddressRemoved = (id: string) => {
     setAddresses((prev) => prev.filter((a) => a.id !== id));
@@ -493,7 +459,7 @@ export function DashboardClient({ data, zones, notifications }: DashboardClientP
               <button
                 id="add-address-btn"
                 onClick={() => setShowAddModal(true)}
-                className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-700 hover:bg-emerald-100 transition-colors"
+                className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-700 hover:bg-emerald-100 transition-colors cursor-pointer"
               >
                 <Plus className="h-4 w-4" /> Add
               </button>
@@ -542,7 +508,7 @@ export function DashboardClient({ data, zones, notifications }: DashboardClientP
                 </p>
                 <button
                   onClick={() => setShowAddModal(true)}
-                  className="mt-5 inline-flex items-center gap-2 rounded-full bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 transition-colors"
+                  className="mt-5 inline-flex items-center gap-2 rounded-full bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 transition-colors cursor-pointer"
                 >
                   <Plus className="h-4 w-4" /> Add Address
                 </button>
@@ -578,7 +544,6 @@ export function DashboardClient({ data, zones, notifications }: DashboardClientP
       {/* ── Add address modal ── */}
       {showAddModal && (
         <AddAddressModal
-          zones={zones}
           onClose={() => setShowAddModal(false)}
           onSuccess={() => {
             // Page re-render via revalidatePath handles the update

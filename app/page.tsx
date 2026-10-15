@@ -144,8 +144,8 @@ export default function LandingPage() {
                     1. Register Address
                   </h3>
                   <p className="text-slate-600">
-                    Create an account and link your residential address to your
-                    municipal waste zone.
+                    Create an account and register your household address to
+                    track scheduled collections.
                   </p>
                 </div>
 
@@ -204,7 +204,7 @@ export default function LandingPage() {
                     <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100 shrink-0">
                       <CalendarDays className="h-4 w-4" />
                     </div>
-                    <span className="text-sm font-medium">Up-to-date schedules for your collection zone</span>
+                    <span className="text-sm font-medium">Up-to-date collection schedules for your address</span>
                   </li>
                   <li className="flex gap-3 items-center">
                     <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100 shrink-0">

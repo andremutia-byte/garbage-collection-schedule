@@ -228,57 +228,47 @@ export async function runIntegrationTests(userId: string): Promise<TestReport> {
     });
   }
 
-  // ─── T6: Zone CRUD round-trip ─────────────────────────────────────────────
-  const testZoneName = `__inttest_${ts}`;
+  // ─── T6: Waste Category CRUD round-trip ──────────────────────────────────
+  const testCatName = `__inttest_cat_${ts}`;
   try {
     // CREATE
     const { data: created, error: cErr } = await db
-      .from("zones")
-      .insert({ name: testZoneName, description: "Automated integration test — safe to delete" })
+      .from("waste_categories")
+      .insert({ name: testCatName, color_code: "#10B981", instructions: "Test instructions" })
       .select("id, name")
       .single();
     if (cErr) throw new Error(`Create: ${cErr.message}`);
 
     // READ
     const { data: readBack, error: rErr } = await db
-      .from("zones")
+      .from("waste_categories")
       .select("id, name")
       .eq("id", created.id)
       .single();
     if (rErr) throw new Error(`Read: ${rErr.message}`);
-    if (readBack.name !== testZoneName) throw new Error("Read returned wrong name");
+    if (readBack.name !== testCatName) throw new Error("Read returned wrong name");
 
     // UPDATE
     const { error: uErr } = await db
-      .from("zones")
-      .update({ name: `${testZoneName}_upd`, updated_at: new Date().toISOString() })
+      .from("waste_categories")
+      .update({ name: `${testCatName}_upd`, updated_at: new Date().toISOString() })
       .eq("id", created.id);
     if (uErr) throw new Error(`Update: ${uErr.message}`);
 
-    // SOFT-DELETE
+    // DELETE
     const { error: dErr } = await db
-      .from("zones")
-      .update({ deleted_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+      .from("waste_categories")
+      .delete()
       .eq("id", created.id);
-    if (dErr) throw new Error(`Soft-delete: ${dErr.message}`);
-
-    // VERIFY GONE FROM ACTIVE LIST
-    const { data: afterDel } = await db
-      .from("zones")
-      .select("id")
-      .eq("id", created.id)
-      .is("deleted_at", null);
-    const cleanedUp = !afterDel || afterDel.length === 0;
+    if (dErr) throw new Error(`Delete: ${dErr.message}`);
 
     results.push({
-      name: "T6: Zone CRUD round-trip (create → read → update → soft-delete → verify gone)",
-      passed: cleanedUp,
-      detail: cleanedUp
-        ? `Zone '${testZoneName}' created, read, updated, soft-deleted, confirmed absent from active query. ✅`
-        : "Soft-delete wrote deleted_at but zone still returned in active-only query",
+      name: "T6: Waste Category CRUD round-trip (create → read → update → delete)",
+      passed: true,
+      detail: `Category '${testCatName}' created, read, updated, and deleted cleanly. ✅`,
     });
   } catch (e: any) {
-    results.push({ name: "T6: Zone CRUD round-trip", passed: false, detail: String(e) });
+    results.push({ name: "T6: Waste Category CRUD round-trip", passed: false, detail: String(e) });
   }
 
   // ─── T7: sync_clerk_user() idempotency ───────────────────────────────────
@@ -298,98 +288,58 @@ export async function runIntegrationTests(userId: string): Promise<TestReport> {
     results.push({ name: "T7: sync_clerk_user idempotency", passed: false, detail: String(e) });
   }
 
-  // ─── T8: Zone delete constraint — linked address blocks deletion ──────────
-  const constraintZoneName = `__inttest_const_${ts}`;
-  const constraintStreet = `${ts} Constraint Ave`;
+  // ─── T8: Address registration — Butuan City defaults ──────────────────────
+  const testAddrStreet = `${ts} Integration Blvd`;
   try {
-    const { data: zone, error: zErr } = await db
-      .from("zones")
-      .insert({ name: constraintZoneName })
-      .select("id")
-      .single();
-    if (zErr) throw new Error(`Zone insert: ${zErr.message}`);
-
     const { data: addr, error: aErr } = await db
       .from("addresses")
       .insert({
-        street: constraintStreet,
-        city: "Constraintville",
-        postal_code: `C${ts.toString().slice(-5)}`,
-        zone_id: zone.id,
+        street: testAddrStreet,
+        city: "Butuan City",
+        postal_code: "8600",
       })
-      .select("id")
+      .select("id, street, city, postal_code")
       .single();
 
-    if (aErr) {
-      await db.from("zones").update({ deleted_at: new Date().toISOString() }).eq("id", zone.id);
-      throw new Error(`Address insert: ${aErr.message}`);
-    }
+    if (aErr) throw new Error(`Address insert: ${aErr.message}`);
 
-    // Simulate what deleteZone() does — check linked count
-    const { count: linked } = await db
-      .from("addresses")
-      .select("*", { count: "exact", head: true })
-      .eq("zone_id", zone.id)
-      .is("deleted_at", null);
+    const ok = addr.city === "Butuan City" && addr.postal_code === "8600";
 
-    const guardWorks = (linked ?? 0) > 0;
-
-    // Clean up: soft-delete address first so zone can then be soft-deleted
-    await db
-      .from("addresses")
-      .update({ deleted_at: new Date().toISOString() })
-      .eq("id", addr.id);
-    await db
-      .from("zones")
-      .update({ deleted_at: new Date().toISOString() })
-      .eq("id", zone.id);
+    // Clean up
+    await db.from("addresses").update({ deleted_at: new Date().toISOString() }).eq("id", addr.id);
 
     results.push({
-      name: "T8: Zone-delete constraint — linked address correctly detected",
-      passed: guardWorks,
-      detail: guardWorks
-        ? `Zone had ${linked} linked address(es). The deleteZone() action checks this and returns an error instead of deleting. ✅`
-        : "No linked addresses detected — constraint guard would not trigger",
+      name: "T8: Address registration without zone — defaults verified",
+      passed: ok,
+      detail: ok
+        ? `Address '${testAddrStreet}' created without zone in Butuan City 8600 and soft-deleted. ✅`
+        : "Address fields did not match expected values",
     });
   } catch (e: any) {
-    results.push({ name: "T8: Zone-delete constraint", passed: false, detail: String(e) });
+    results.push({ name: "T8: Address registration", passed: false, detail: String(e) });
   }
 
   // ─── T9: E2E scheduling round-trip ───────────────────────────────────────
-  const schedZoneName = `__inttest_sched_${ts}`;
   const schedStreet = `${ts} Schedule St`;
   try {
-    // 1. Create zone
-    const { data: zone, error: zErr } = await db
-      .from("zones")
-      .insert({ name: schedZoneName })
-      .select("id")
-      .single();
-    if (zErr) throw new Error(`Zone: ${zErr.message}`);
-
-    // 2. Create address in zone (unique street per run via timestamp)
+    // 1. Create address without zone
     const { data: addr, error: aErr } = await db
       .from("addresses")
       .insert({
         street: schedStreet,
-        city: "Pickuptown",
-        postal_code: `S${ts.toString().slice(-5)}`,
-        zone_id: zone.id,
+        city: "Butuan City",
+        postal_code: "8600",
       })
       .select("id")
       .single();
-    if (aErr) {
-      await db.from("zones").update({ deleted_at: new Date().toISOString() }).eq("id", zone.id);
-      throw new Error(`Address: ${aErr.message}`);
-    }
+    if (aErr) throw new Error(`Address: ${aErr.message}`);
 
-    // 3. Get or create waste category
+    // 2. Get or create waste category
     let catId: string;
     const { data: existingCat } = await db
       .from("waste_categories")
       .select("id")
       .eq("is_active", true)
-      .is("deleted_at" as any, null)
       .limit(1)
       .maybeSingle();
 
@@ -405,12 +355,11 @@ export async function runIntegrationTests(userId: string): Promise<TestReport> {
       catId = newCat.id;
     }
 
-    // 4. Create schedule rule (weekly, Monday = day_of_week 1)
+    // 3. Create schedule rule (city-wide, no zone)
     const today = new Date().toISOString().slice(0, 10);
     const { data: sched, error: sErr } = await db
       .from("schedules")
       .insert({
-        zone_id: zone.id,
         waste_category_id: catId,
         frequency: "weekly",
         day_of_week: 1,
@@ -420,14 +369,14 @@ export async function runIntegrationTests(userId: string): Promise<TestReport> {
       .single();
     if (sErr) throw new Error(`Schedule: ${sErr.message}`);
 
-    // 5. Compute next Monday (what generatePickupsFromSchedule does)
+    // 4. Compute next Monday
     const nextMonday = new Date();
     nextMonday.setHours(0, 0, 0, 0);
     if (nextMonday.getDay() === 0) nextMonday.setDate(nextMonday.getDate() + 1);
     else while (nextMonday.getDay() !== 1) nextMonday.setDate(nextMonday.getDate() + 1);
     const pickupDate = nextMonday.toISOString().slice(0, 10);
 
-    // 6. Insert pickup (simulating generatePickupsFromSchedule)
+    // 5. Insert pickup
     const { data: pickup, error: pErr } = await db
       .from("pickups")
       .upsert(
@@ -443,13 +392,13 @@ export async function runIntegrationTests(userId: string): Promise<TestReport> {
       .single();
     if (pErr) throw new Error(`Pickup upsert: ${pErr.message}`);
 
-    // 7. Verify pickup data is correct
+    // 6. Verify pickup data
     const schedOk =
       pickup.status === "scheduled" &&
       pickup.scheduled_date === pickupDate &&
       pickup.address_id === addr.id;
 
-    // 8. Test that auth client (resident with address) can see this pickup
+    // 7. Test that auth client (resident with address) can see this pickup
     let residentCanSeePickup = false;
     if (clerkToken) {
       // Link current user to the test address temporarily
@@ -478,17 +427,16 @@ export async function runIntegrationTests(userId: string): Promise<TestReport> {
     await db.from("pickups").update({ deleted_at: new Date().toISOString() }).eq("id", pickup.id);
     await db.from("schedules").update({ deleted_at: new Date().toISOString() }).eq("id", sched.id);
     await db.from("addresses").update({ deleted_at: new Date().toISOString() }).eq("id", addr.id);
-    await db.from("zones").update({ deleted_at: new Date().toISOString() }).eq("id", zone.id);
 
     const passed = schedOk && (clerkToken ? residentCanSeePickup : true);
     results.push({
-      name: "T9: E2E scheduling — zone→address→schedule→pickup→resident visibility",
+      name: "T9: E2E scheduling — address→schedule→pickup→resident visibility",
       passed,
       detail: schedOk
         ? clerkToken
           ? residentCanSeePickup
             ? `Pickup created for ${pickupDate}. Resident auth client can see it via RLS address link. ✅ Full e2e OK.`
-            : `Pickup created for ${pickupDate} ✅ but resident auth client CANNOT see it via RLS — address link or RLS pickup policy may be broken.`
+            : `Pickup created for ${pickupDate} ✅ but resident auth client CANNOT see it via RLS.`
           : `Pickup created for ${pickupDate} ✅ (resident visibility check skipped — no JWT)`
         : "Pickup data mismatch after insert",
     });

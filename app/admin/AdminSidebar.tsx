@@ -9,7 +9,6 @@ import {
   Building2,
   CalendarClock,
   Home,
-  MapPin,
   Menu,
   Recycle,
   Users,
@@ -20,7 +19,6 @@ const NAV_ITEMS = [
   { href: "/admin", label: "Dashboard", icon: BarChart3, exact: true },
   { href: "/admin/residents", label: "Residents", icon: Users, exact: false },
   { href: "/admin/addresses", label: "Addresses", icon: Home, exact: false },
-  { href: "/admin/zones", label: "Zones", icon: MapPin, exact: false },
   { href: "/admin/schedules", label: "Schedules", icon: CalendarClock, exact: false },
 ];
 

@@ -14,7 +14,6 @@ import {
 } from "lucide-react";
 import type {
   AdminSchedule,
-  AdminZone,
   AdminCategory,
   AdminPickup,
 } from "@/app/actions/admin";
@@ -30,7 +29,6 @@ import {
 import { generatePickupReminders } from "@/app/actions/notifications";
 import {
   Alert,
-  Badge,
   ConfirmDialog,
   EmptyState,
   Field,
@@ -47,12 +45,10 @@ import {
 interface AddressItem {
   id: string;
   label: string;
-  zone_name: string | null;
 }
 
 interface Props {
   schedules: AdminSchedule[];
-  zones: AdminZone[];
   categories: AdminCategory[];
   pickups: AdminPickup[];
   addresses: AddressItem[];
@@ -77,23 +73,15 @@ function formatDate(iso: string) {
   });
 }
 
-function statusBadgeVariant(s: string) {
-  if (s === "completed") return "success";
-  if (s === "missed" || s === "skipped") return "danger";
-  return "default";
-}
-
 // ─── Schedule Form ────────────────────────────────────────────────────────────
 
 function ScheduleForm({
   initial,
-  zones,
   categories,
   onClose,
   onSuccess,
 }: {
   initial?: AdminSchedule;
-  zones: AdminZone[];
   categories: AdminCategory[];
   onClose: () => void;
   onSuccess: (msg: string) => void;
@@ -121,14 +109,6 @@ function ScheduleForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Field label="Zone" required>
-          <Select name="zone_id" defaultValue={initial?.zone_id ?? ""} required>
-            <option value="">Select zone…</option>
-            {zones.map((z) => (
-              <option key={z.id} value={z.id}>{z.name}</option>
-            ))}
-          </Select>
-        </Field>
         <Field label="Waste Category" required>
           <Select name="waste_category_id" defaultValue={initial?.waste_category_id ?? ""} required>
             <option value="">Select category…</option>
@@ -212,7 +192,7 @@ function PickupForm({
           <option value="">Select address…</option>
           {addresses.map((a) => (
             <option key={a.id} value={a.id}>
-              {a.label}{a.zone_name ? ` [${a.zone_name}]` : ""}
+              {a.label}
             </option>
           ))}
         </Select>
@@ -269,8 +249,8 @@ function GeneratePickupsButton({ scheduleId, onResult }: { scheduleId: string; o
         })
       }
       disabled={isPending}
-      title="Generate pickup events from this schedule"
-      className="inline-flex items-center gap-1 rounded-lg border border-blue-100 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-100 disabled:opacity-60 transition-colors"
+      title="Generate pickup events for all active addresses from this schedule"
+      className="inline-flex items-center gap-1 rounded-lg border border-blue-100 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-100 disabled:opacity-60 transition-colors cursor-pointer"
     >
       {isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
       Generate
@@ -280,14 +260,14 @@ function GeneratePickupsButton({ scheduleId, onResult }: { scheduleId: string; o
 
 // ─── Notify Residents Button ──────────────────────────────────────────────────
 
-function NotifyButton({ zoneId, onResult }: { zoneId: string; onResult: (msg: string, isError: boolean) => void }) {
+function NotifyButton({ onResult }: { onResult: (msg: string, isError: boolean) => void }) {
   const [isPending, startTransition] = useTransition();
 
   return (
     <button
       onClick={() =>
         startTransition(async () => {
-          const result = await generatePickupReminders(zoneId);
+          const result = await generatePickupReminders();
           if (result.success) {
             onResult(
               result.count === 0
@@ -301,8 +281,8 @@ function NotifyButton({ zoneId, onResult }: { zoneId: string; onResult: (msg: st
         })
       }
       disabled={isPending}
-      title="Send pickup reminders to residents in this zone"
-      className="inline-flex items-center gap-1 rounded-lg border border-amber-100 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-700 hover:bg-amber-100 disabled:opacity-60 transition-colors"
+      title="Send pickup reminders to residents for upcoming pickups"
+      className="inline-flex items-center gap-1 rounded-lg border border-amber-100 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-700 hover:bg-amber-100 disabled:opacity-60 transition-colors cursor-pointer"
     >
       {isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Bell className="h-3 w-3" />}
       Notify
@@ -352,7 +332,7 @@ function PickupStatusSelect({
 
 type Tab = "schedules" | "pickups";
 
-export function SchedulesClient({ schedules, zones, categories, pickups, addresses }: Props) {
+export function SchedulesClient({ schedules, categories, pickups, addresses }: Props) {
   const [tab, setTab] = useState<Tab>("schedules");
   const [showCreateSched, setShowCreateSched] = useState(false);
   const [showCreatePickup, setShowCreatePickup] = useState(false);
@@ -370,7 +350,6 @@ export function SchedulesClient({ schedules, zones, categories, pickups, address
       p.address.street.toLowerCase().includes(q) ||
       p.address.city.toLowerCase().includes(q) ||
       p.waste_category.name.toLowerCase().includes(q) ||
-      (p.zone_name ?? "").toLowerCase().includes(q) ||
       p.scheduled_date.includes(q) ||
       p.status.toLowerCase().includes(q)
     );
@@ -403,7 +382,7 @@ export function SchedulesClient({ schedules, zones, categories, pickups, address
         action={
           <button
             onClick={() => tab === "schedules" ? setShowCreateSched(true) : setShowCreatePickup(true)}
-            className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 transition-colors"
+            className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 transition-colors cursor-pointer"
           >
             <Plus className="h-4 w-4" />
             {tab === "schedules" ? "New Schedule" : "New Pickup"}
@@ -420,7 +399,7 @@ export function SchedulesClient({ schedules, zones, categories, pickups, address
           <button
             key={t}
             onClick={() => setTab(t)}
-            className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors capitalize ${
+            className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors capitalize cursor-pointer ${
               tab === t ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
             }`}
           >
@@ -437,11 +416,11 @@ export function SchedulesClient({ schedules, zones, categories, pickups, address
             <EmptyState
               icon={CalendarClock}
               title="No schedule rules"
-              subtitle="Create a recurring rule, then use Generate to create pickup events for all addresses in that zone."
+              subtitle='Create a recurring rule, then use "Generate" to create pickup events for all active addresses.'
               action={
                 <button
                   onClick={() => setShowCreateSched(true)}
-                  className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 transition-colors"
+                  className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 transition-colors cursor-pointer"
                 >
                   <Plus className="h-4 w-4" /> Create Rule
                 </button>
@@ -453,7 +432,6 @@ export function SchedulesClient({ schedules, zones, categories, pickups, address
                 <table className="w-full text-sm">
                   <thead className="bg-slate-50 border-b border-slate-100">
                     <tr>
-                      <th className="text-left px-4 py-3 font-medium text-slate-500">Zone</th>
                       <th className="text-left px-4 py-3 font-medium text-slate-500">Category</th>
                       <th className="text-left px-4 py-3 font-medium text-slate-500">Frequency</th>
                       <th className="text-left px-4 py-3 font-medium text-slate-500">Day</th>
@@ -464,7 +442,6 @@ export function SchedulesClient({ schedules, zones, categories, pickups, address
                   <tbody className="divide-y divide-slate-50">
                     {schedules.map((s) => (
                       <tr key={s.id} className="hover:bg-slate-50/50">
-                        <td className="px-4 py-3 font-medium text-slate-900">{s.zone_name}</td>
                         <td className="px-4 py-3">
                           <span
                             className="inline-flex items-center gap-1.5 text-xs font-medium rounded-full px-2.5 py-0.5"
@@ -492,19 +469,18 @@ export function SchedulesClient({ schedules, zones, categories, pickups, address
                               onResult={handleMsg}
                             />
                             <NotifyButton
-                              zoneId={s.zone_id}
                               onResult={handleMsg}
                             />
                             <button
                               onClick={() => setEditSched(s)}
-                              className="rounded-lg p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+                              className="rounded-lg p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
                               title="Edit"
                             >
                               <Pencil className="h-3.5 w-3.5" />
                             </button>
                             <button
                               onClick={() => setDeleteSched(s.id)}
-                              className="rounded-lg p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                              className="rounded-lg p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
                               title="Delete"
                             >
                               <Trash2 className="h-3.5 w-3.5" />
@@ -532,7 +508,7 @@ export function SchedulesClient({ schedules, zones, categories, pickups, address
               action={
                 <button
                   onClick={() => setShowCreatePickup(true)}
-                  className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 transition-colors"
+                  className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 transition-colors cursor-pointer"
                 >
                   <Plus className="h-4 w-4" /> Add Pickup
                 </button>
@@ -545,7 +521,7 @@ export function SchedulesClient({ schedules, zones, categories, pickups, address
                   <Search className="h-4 w-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                   <input
                     type="text"
-                    placeholder="Search pickups by address, category, zone, date…"
+                    placeholder="Search pickups by address, category, date…"
                     value={pickupSearch}
                     onChange={(e) => setPickupSearch(e.target.value)}
                     className="w-full rounded-xl border border-slate-200 bg-slate-50 pl-9 pr-4 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition"
@@ -553,7 +529,7 @@ export function SchedulesClient({ schedules, zones, categories, pickups, address
                 </div>
                 <button
                   onClick={() => setShowCreatePickup(true)}
-                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-xs hover:bg-emerald-700 transition"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-xs hover:bg-emerald-700 transition cursor-pointer"
                 >
                   <Plus className="h-4 w-4" /> Add Pickup
                 </button>
@@ -568,7 +544,7 @@ export function SchedulesClient({ schedules, zones, categories, pickups, address
                     action={
                       <button
                         onClick={() => setPickupSearch("")}
-                        className="inline-flex items-center rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
+                        className="inline-flex items-center rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition cursor-pointer"
                       >
                         Clear search
                       </button>
@@ -582,7 +558,6 @@ export function SchedulesClient({ schedules, zones, categories, pickups, address
                       <tr>
                         <th className="text-left px-4 py-3 font-medium text-slate-500">Date</th>
                         <th className="text-left px-4 py-3 font-medium text-slate-500">Address</th>
-                        <th className="text-left px-4 py-3 font-medium text-slate-500">Zone</th>
                         <th className="text-left px-4 py-3 font-medium text-slate-500">Category</th>
                         <th className="text-left px-4 py-3 font-medium text-slate-500">Status</th>
                         <th className="text-right px-4 py-3 font-medium text-slate-500">Actions</th>
@@ -598,7 +573,6 @@ export function SchedulesClient({ schedules, zones, categories, pickups, address
                           <p className="text-slate-800">{p.address.street}</p>
                           <p className="text-xs text-slate-500">{p.address.city} {p.address.postal_code}</p>
                         </td>
-                        <td className="px-4 py-3 text-slate-500 text-xs">{p.zone_name ?? "—"}</td>
                         <td className="px-4 py-3">
                           <span
                             className="inline-flex items-center text-xs font-medium rounded-full px-2.5 py-0.5"
@@ -621,7 +595,7 @@ export function SchedulesClient({ schedules, zones, categories, pickups, address
                         <td className="px-4 py-3 text-right">
                           <button
                             onClick={() => setDeletePickupId(p.id)}
-                            className="rounded-lg p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                            className="rounded-lg p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
                             title="Remove"
                           >
                             <Trash2 className="h-3.5 w-3.5" />
@@ -645,14 +619,14 @@ export function SchedulesClient({ schedules, zones, categories, pickups, address
 
       {/* Modals */}
       {showCreateSched && (
-        <Modal title="New Schedule Rule" subtitle="Define a recurring collection rule for a zone" onClose={() => setShowCreateSched(false)} wide>
-          <ScheduleForm zones={zones} categories={categories} onClose={() => setShowCreateSched(false)} onSuccess={(m) => setSuccessMsg(m)} />
+        <Modal title="New Schedule Rule" subtitle="Define a recurring collection rule for the municipality" onClose={() => setShowCreateSched(false)} wide>
+          <ScheduleForm categories={categories} onClose={() => setShowCreateSched(false)} onSuccess={(m) => setSuccessMsg(m)} />
         </Modal>
       )}
 
       {editSched && (
-        <Modal title="Edit Schedule Rule" subtitle={`${editSched.zone_name} — ${editSched.category_name}`} onClose={() => setEditSched(null)} wide>
-          <ScheduleForm initial={editSched} zones={zones} categories={categories} onClose={() => setEditSched(null)} onSuccess={(m) => setSuccessMsg(m)} />
+        <Modal title="Edit Schedule Rule" subtitle={editSched.category_name} onClose={() => setEditSched(null)} wide>
+          <ScheduleForm initial={editSched} categories={categories} onClose={() => setEditSched(null)} onSuccess={(m) => setSuccessMsg(m)} />
         </Modal>
       )}
 

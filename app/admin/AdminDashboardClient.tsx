@@ -13,7 +13,6 @@ import {
   Clock,
   ExternalLink,
   Layers,
-  MapPin,
   Recycle,
   Search,
   Users,
@@ -117,10 +116,9 @@ export function AdminDashboardClient({ stats }: { stats: AdminStats }) {
           .includes(query);
         const residentMatch = (pickup.resident_email ?? "").toLowerCase().includes(query);
         const categoryMatch = pickup.waste_category.name.toLowerCase().includes(query);
-        const zoneMatch = (pickup.zone_name ?? "").toLowerCase().includes(query);
         const dateMatch = pickup.scheduled_date.includes(query);
 
-        return addressMatch || residentMatch || categoryMatch || zoneMatch || dateMatch;
+        return addressMatch || residentMatch || categoryMatch || dateMatch;
       }
 
       return true;
@@ -158,10 +156,10 @@ export function AdminDashboardClient({ stats }: { stats: AdminStats }) {
         </div>
       </div>
 
-      {/* ─── Summary Cards (6 Cards) ──────────────────────────────────────── */}
+      {/* ─── Summary Cards (5 Cards) ──────────────────────────────────────── */}
       <section aria-labelledby="summary-cards-heading">
         <h2 id="summary-cards-heading" className="sr-only">Summary Cards</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
           {/* Card 1: Total Residents */}
           <Link
             href="/admin/residents"
@@ -189,30 +187,12 @@ export function AdminDashboardClient({ stats }: { stats: AdminStats }) {
               <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Total Addresses</p>
               <p className="text-3xl font-extrabold tracking-tight text-slate-900">{stats.totalAddresses.toLocaleString()}</p>
               <p className="text-xs text-slate-500 flex items-center gap-1 pt-1 font-medium">
-                Assigned service locations
+                Service locations
                 <ArrowRight className="h-3 w-3 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all text-violet-600" />
               </p>
             </div>
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-violet-50 text-violet-600 border border-violet-100 group-hover:bg-violet-600 group-hover:text-white transition-colors">
               <Building2 className="h-6 w-6" />
-            </div>
-          </Link>
-
-          {/* Card 3: Collection Zones */}
-          <Link
-            href="/admin/zones"
-            className="group bg-white rounded-2xl border border-slate-200/90 p-5 shadow-2xs hover:border-emerald-300 hover:shadow-xs transition-all flex items-start justify-between"
-          >
-            <div className="space-y-1">
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Total Zones</p>
-              <p className="text-3xl font-extrabold tracking-tight text-slate-900">{stats.totalZones.toLocaleString()}</p>
-              <p className="text-xs text-slate-500 flex items-center gap-1 pt-1 font-medium">
-                Active collection sectors
-                <ArrowRight className="h-3 w-3 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all text-emerald-600" />
-              </p>
-            </div>
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
-              <MapPin className="h-6 w-6" />
             </div>
           </Link>
 
@@ -492,7 +472,7 @@ export function AdminDashboardClient({ stats }: { stats: AdminStats }) {
                 Collection Activity
               </h2>
               <p className="text-xs text-slate-500 mt-0.5">
-                Recent and upcoming pickups with live resident, category, and zone records.
+                Recent and upcoming pickups with live resident and category records.
               </p>
             </div>
             <Link
@@ -596,7 +576,6 @@ export function AdminDashboardClient({ stats }: { stats: AdminStats }) {
                     <th className="px-6 py-3">Scheduled Date</th>
                     <th className="px-6 py-3">Resident & Address</th>
                     <th className="px-6 py-3">Waste Category</th>
-                    <th className="px-6 py-3">Zone</th>
                     <th className="px-6 py-3">Status</th>
                     <th className="px-6 py-3 text-right">Notes</th>
                   </tr>
@@ -656,18 +635,6 @@ export function AdminDashboardClient({ stats }: { stats: AdminStats }) {
                           </div>
                         </td>
 
-                        {/* Zone Column */}
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          {pickup.zone_name ? (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs bg-slate-100 text-slate-700 font-medium">
-                              <MapPin className="h-3 w-3 text-slate-500" />
-                              {pickup.zone_name}
-                            </span>
-                          ) : (
-                            <span className="text-slate-400">—</span>
-                          )}
-                        </td>
-
                         {/* Status Column */}
                         <td className="px-6 py-4 whitespace-nowrap">
                           <StatusBadge status={pickup.status} />
@@ -722,12 +689,6 @@ export function AdminDashboardClient({ stats }: { stats: AdminStats }) {
                         />
                         <span className="font-medium text-slate-800">{pickup.waste_category.name}</span>
                       </div>
-                      {pickup.zone_name && (
-                        <span className="text-slate-500 flex items-center gap-1">
-                          <MapPin className="h-3 w-3" />
-                          {pickup.zone_name}
-                        </span>
-                      )}
                     </div>
                   </div>
                 );
@@ -743,11 +704,10 @@ export function AdminDashboardClient({ stats }: { stats: AdminStats }) {
           <Layers className="h-5 w-5 text-slate-400" />
           Quick Management Links
         </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {[
             { href: "/admin/residents", label: "Manage Residents", desc: "View users & role permissions", icon: Users, color: "text-blue-600" },
-            { href: "/admin/addresses", label: "Manage Addresses", desc: "Assign zones & manage units", icon: Building2, color: "text-violet-600" },
-            { href: "/admin/zones", label: "Manage Zones", desc: "Create & edit collection zones", icon: MapPin, color: "text-emerald-600" },
+            { href: "/admin/addresses", label: "Manage Addresses", desc: "View & manage registered addresses", icon: Building2, color: "text-violet-600" },
             { href: "/admin/schedules", label: "Manage Schedules", desc: "Set rules & generate pickups", icon: CalendarClock, color: "text-amber-600" },
           ].map((link) => (
             <Link
