@@ -33,12 +33,17 @@ function resolvePrimaryEmail(
   primaryEmailId: string | null | undefined,
   emailAddresses: Array<{ id: string; email_address: string }> | undefined | null
 ): string | null {
-  if (!primaryEmailId || !Array.isArray(emailAddresses)) {
+  if (!Array.isArray(emailAddresses) || emailAddresses.length === 0) {
     return null;
   }
-  const match = emailAddresses.find((e) => e.id === primaryEmailId);
-  const address = match?.email_address;
-  return typeof address === "string" && address.length > 0 ? address : null;
+  if (primaryEmailId) {
+    const match = emailAddresses.find((e) => e.id === primaryEmailId);
+    if (match?.email_address && match.email_address.length > 0) {
+      return match.email_address;
+    }
+  }
+  const fallback = emailAddresses[0]?.email_address;
+  return typeof fallback === "string" && fallback.length > 0 ? fallback : null;
 }
 
 // ---------------------------------------------------------------------------
@@ -71,10 +76,7 @@ export async function POST(req: NextRequest) {
     const { id: clerkId, primary_email_address_id, email_addresses } = evt.data;
 
     // Resolve the primary email by matching primary_email_address_id against
-    // the email_addresses array. This is the correct approach — Clerk does not
-    // guarantee that email_addresses[0] is the primary address.
-    // Returns 422 if no match can be found so the event is flagged in the
-    // Clerk dashboard rather than inserting a malformed public.users row.
+    // the email_addresses array, with fallback to first email if primary ID is unset.
     const email = resolvePrimaryEmail(primary_email_address_id, email_addresses);
 
     if (!email) {
@@ -106,6 +108,11 @@ export async function POST(req: NextRequest) {
         // Return 500 so Svix retries — do not return 200 on DB failure.
         return new Response("Database sync failed", { status: 500 });
       }
+
+      // Ensure resident_profiles exists
+      await adminClient
+        .from("resident_profiles")
+        .upsert({ user_id: clerkId }, { onConflict: "user_id", ignoreDuplicates: true });
 
       console.log(
         `[clerk-webhook] ${eventType}: synced user ${clerkId.substring(0, 12)}...`

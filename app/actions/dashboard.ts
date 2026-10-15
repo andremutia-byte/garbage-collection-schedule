@@ -4,6 +4,7 @@ import { auth } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
+import { ensureUserSynchronized } from "@/lib/user-sync";
 
 // ─────────────────────────────────────────────
 // Types
@@ -45,6 +46,9 @@ export interface DashboardData {
 export async function getDashboardData(): Promise<DashboardData | null> {
   const { userId } = await auth();
   if (!userId) return null;
+
+  // Ensure authenticated user is synced to public.users
+  await ensureUserSynchronized(userId);
 
   const supabase = await createServerSupabaseClient();
 
@@ -159,6 +163,12 @@ export async function addAddress(formData: FormData): Promise<ActionResult> {
 
   if (!street || !city || !postalCode) {
     return { success: false, error: "Street, city and postal code are required." };
+  }
+
+  // Ensure authenticated Clerk user exists in public.users before linking addresses
+  const syncResult = await ensureUserSynchronized(userId);
+  if (!syncResult.success) {
+    return { success: false, error: syncResult.error ?? "Failed to synchronize user account." };
   }
 
   // Use admin client to bypass RLS for INSERT operations
@@ -315,6 +325,8 @@ export async function updateNotificationPref(
 ): Promise<ActionResult> {
   const { userId } = await auth();
   if (!userId) return { success: false, error: "Not authenticated" };
+
+  await ensureUserSynchronized(userId);
 
   const admin = createAdminSupabaseClient();
   const { error } = await admin
