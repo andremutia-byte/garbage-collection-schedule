@@ -164,36 +164,117 @@ export async function addAddress(formData: FormData): Promise<ActionResult> {
   // Use admin client to bypass RLS for INSERT operations
   const admin = createAdminSupabaseClient();
 
-  // Upsert address (unique on street+city+postal_code)
-  const { data: address, error: addrError } = await admin
+  // Find existing address matching (street, unit, city, postal_code)
+  let addrQuery = admin
     .from("addresses")
-    .upsert(
-      { street, unit, city, postal_code: postalCode, zone_id: zoneId },
-      { onConflict: "street,city,postal_code", ignoreDuplicates: false }
-    )
-    .select("id")
-    .single();
+    .select("id, zone_id, deleted_at")
+    .eq("street", street)
+    .eq("city", city)
+    .eq("postal_code", postalCode);
 
-  if (addrError || !address) {
-    return { success: false, error: addrError?.message ?? "Failed to save address." };
+  if (unit) {
+    addrQuery = addrQuery.eq("unit", unit);
+  } else {
+    addrQuery = addrQuery.is("unit", null);
   }
 
-  // Check if user already has addresses (to set is_primary correctly)
-  const { count } = await admin
+  const { data: existingAddress, error: queryError } = await addrQuery.maybeSingle();
+  if (queryError) {
+    return { success: false, error: queryError.message };
+  }
+
+  let addressId: string;
+
+  if (existingAddress) {
+    addressId = existingAddress.id;
+
+    // Reactivate soft-deleted address if applicable
+    if (existingAddress.deleted_at) {
+      await admin
+        .from("addresses")
+        .update({
+          deleted_at: null,
+          updated_at: new Date().toISOString(),
+          ...(zoneId && !existingAddress.zone_id ? { zone_id: zoneId } : {}),
+        })
+        .eq("id", addressId);
+    } else if (zoneId && !existingAddress.zone_id) {
+      // If address did not have a zone assigned and resident selected one, update it
+      await admin
+        .from("addresses")
+        .update({ zone_id: zoneId, updated_at: new Date().toISOString() })
+        .eq("id", addressId);
+    }
+  } else {
+    // Safe insert new address
+    const { data: newAddress, error: insertError } = await admin
+      .from("addresses")
+      .insert({
+        street,
+        unit,
+        city,
+        postal_code: postalCode,
+        zone_id: zoneId,
+      })
+      .select("id")
+      .single();
+
+    if (insertError) {
+      // In case of concurrent race condition (code 23505), fetch the existing record
+      if (insertError.code === "23505") {
+        let retryQuery = admin
+          .from("addresses")
+          .select("id")
+          .eq("street", street)
+          .eq("city", city)
+          .eq("postal_code", postalCode);
+
+        if (unit) {
+          retryQuery = retryQuery.eq("unit", unit);
+        } else {
+          retryQuery = retryQuery.is("unit", null);
+        }
+
+        const { data: retryAddr, error: retryError } = await retryQuery.maybeSingle();
+        if (retryError || !retryAddr) {
+          return { success: false, error: retryError?.message ?? "Failed to save address." };
+        }
+        addressId = retryAddr.id;
+      } else {
+        return { success: false, error: insertError.message };
+      }
+    } else {
+      addressId = newAddress.id;
+    }
+  }
+
+  // Check if user already has this address linked (duplicate submission check)
+  const { data: existingLink } = await admin
     .from("user_addresses")
-    .select("*", { count: "exact", head: true })
-    .eq("user_id", userId);
+    .select("is_primary")
+    .eq("user_id", userId)
+    .eq("address_id", addressId)
+    .maybeSingle();
 
-  const isPrimary = (count ?? 0) === 0;
+  if (!existingLink) {
+    // Check if user already has addresses (to set is_primary correctly)
+    const { count } = await admin
+      .from("user_addresses")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", userId);
 
-  // Link address to user
-  const { error: linkError } = await admin.from("user_addresses").upsert(
-    { user_id: userId, address_id: address.id, is_primary: isPrimary },
-    { onConflict: "user_id,address_id" }
-  );
+    const isPrimary = (count ?? 0) === 0;
 
-  if (linkError) {
-    return { success: false, error: linkError.message };
+    // Link address to user
+    const { error: linkError } = await admin.from("user_addresses").insert({
+      user_id: userId,
+      address_id: addressId,
+      is_primary: isPrimary,
+    });
+
+    if (linkError) {
+      return { success: false, error: linkError.message };
+    }
   }
 
   // Ensure resident_profile exists
