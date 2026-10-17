@@ -1,6 +1,8 @@
-# Garbage Collection Schedule System
+# ButuanLinis — Garbage Collection Schedule System
 
-A modern, responsive web application for managing municipal garbage collection schedules, pickup generation, address registrations, and resident notifications. Built with **Next.js 16**, **TypeScript**, **Tailwind CSS**, **Clerk Authentication**, and **Supabase (PostgreSQL with Row Level Security)**.
+> **“A Cleaner Butuan, One Collection at a Time.”**
+
+A modern, responsive web application for managing municipal garbage collection schedules, pickup generation, address registrations, and resident notifications in Butuan City. Built with **Next.js 16**, **TypeScript**, **Tailwind CSS**, **Clerk Authentication**, and **Supabase (PostgreSQL with Row Level Security)**.
 
 ---
 
@@ -25,7 +27,7 @@ A modern, responsive web application for managing municipal garbage collection s
 
 ## Overview
 
-The **Garbage Collection Schedule System** bridges municipal sanitation departments and residents. It provides:
+**ButuanLinis** bridges municipal sanitation departments and residents across Butuan City. It provides:
 - **Residents** with instant visibility into their upcoming trash and recycling pickup days, collection schedules, and real-time alerts.
 - **Administrators and Dispatchers** with full operational control over resident records, registered addresses, scheduled pickups, pickup batch generation, and aggregated activity statistics.
 

@@ -8,7 +8,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { runIntegrationTests, type TestReport } from "@/lib/integration-tests";
 
-export const metadata = { title: "Integration Tests — GCS" };
+export const metadata = { title: "Integration Tests — ButuanLinis" };
 export const dynamic = "force-dynamic";
 
 function StatusBadge({ passed }: { passed: boolean }) {

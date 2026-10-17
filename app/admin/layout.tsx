@@ -4,7 +4,8 @@ import { getAdminAuth } from "@/lib/admin-auth";
 import { AdminSidebar } from "./AdminSidebar";
 
 export const metadata = {
-  title: "Admin — Garbage Collection Schedule",
+  title: "Admin — ButuanLinis",
+  description: "Administrative control panel for ButuanLinis waste management and collection schedules.",
 };
 
 export default async function AdminLayout({ children }: LayoutProps<"/admin">) {

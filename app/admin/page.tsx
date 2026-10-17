@@ -2,7 +2,7 @@ import { getAdminStats } from "@/app/actions/admin";
 import { AdminDashboardClient } from "./AdminDashboardClient";
 
 export const metadata = {
-  title: "Admin Dashboard — GCS",
+  title: "Admin Dashboard — ButuanLinis",
 };
 
 export default async function AdminDashboardPage() {

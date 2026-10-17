@@ -423,7 +423,7 @@ export function DashboardClient({ data, notifications }: DashboardClientProps) {
           My Schedule
         </h1>
         <p className="mt-1 text-sm sm:text-base text-slate-500">
-          Manage your household address and track scheduled waste collections.
+          Manage your household address and track scheduled waste collections in Butuan City.
         </p>
       </div>
 

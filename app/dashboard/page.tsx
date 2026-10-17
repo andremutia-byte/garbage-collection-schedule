@@ -5,8 +5,8 @@ import { getMyNotifications } from "@/app/actions/notifications";
 import { DashboardClient } from "./DashboardClient";
 
 export const metadata = {
-  title: "My Schedule — Garbage Collection Schedule",
-  description: "View your upcoming garbage collection pickups and manage your registered addresses.",
+  title: "My Schedule — ButuanLinis",
+  description: "View your upcoming garbage collection pickups and manage your registered addresses in Butuan City.",
 };
 
 export default async function DashboardPage() {

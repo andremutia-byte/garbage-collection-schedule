@@ -14,8 +14,12 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Garbage Collection Schedule",
-  description: "Never miss a garbage collection day. View your personalized waste and recycling pickup schedule.",
+  title: {
+    default: "ButuanLinis — A Cleaner Butuan, One Collection at a Time",
+    template: "%s | ButuanLinis",
+  },
+  description: "A Cleaner Butuan, One Collection at a Time. Official garbage collection and waste recycling schedule management portal for Butuan City.",
+  applicationName: "ButuanLinis",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

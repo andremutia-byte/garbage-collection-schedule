@@ -142,7 +142,7 @@ export function AdminDashboardClient({ stats }: { stats: AdminStats }) {
             </span>
           </div>
           <p className="text-slate-500 mt-1 text-sm">
-            System overview and operational analytics for garbage collection management.
+            System overview and operational analytics for ButuanLinis garbage collection management.
           </p>
         </div>
         <div className="flex items-center gap-2">

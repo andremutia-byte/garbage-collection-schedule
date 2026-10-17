@@ -1,12 +1,13 @@
 {
-  "name": "garbage-collection-schedule",
+  "name": "butuanlinis",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test:integration": "node scripts/test-integration.mjs"
   },
   "dependencies": {
     "@clerk/nextjs": "^7.9.9",

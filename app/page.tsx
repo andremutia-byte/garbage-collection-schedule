@@ -22,9 +22,14 @@ export default function LandingPage() {
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-xs group-hover:bg-emerald-700 transition-colors">
               <Recycle className="h-5 w-5" />
             </div>
-            <span className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 group-hover:text-emerald-800 transition-colors">
-              Garbage Collection Schedule
-            </span>
+            <div className="flex flex-col">
+              <span className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 group-hover:text-emerald-800 transition-colors leading-none">
+                ButuanLinis
+              </span>
+              <span className="text-[10px] text-slate-500 font-medium hidden sm:block leading-none mt-1">
+                A Cleaner Butuan, One Collection at a Time
+              </span>
+            </div>
           </Link>
 
           <nav className="flex items-center gap-3 sm:gap-4">
@@ -80,15 +85,18 @@ export default function LandingPage() {
           <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 text-center">
             <div className="mx-auto mb-6 inline-flex items-center gap-2 rounded-full bg-emerald-50 px-4 py-1.5 text-xs sm:text-sm font-semibold text-emerald-800 ring-1 ring-emerald-200 shadow-2xs">
               <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-              Municipal Waste Management Portal
+              ButuanLinis &bull; City of Butuan Waste Management
             </div>
             <h1 className="mx-auto max-w-4xl text-3xl font-extrabold tracking-tight text-slate-900 sm:text-5xl lg:text-6xl">
               Never Miss a{" "}
               <span className="text-emerald-600">Garbage Collection</span> Day
-              Again
+              in Butuan
             </h1>
             <p className="mx-auto mt-6 max-w-2xl text-base sm:text-lg leading-relaxed text-slate-600">
-              The smart, reliable way for residents to check their waste and
+              <span className="font-semibold text-emerald-800 block text-lg sm:text-xl mb-1">
+                “A Cleaner Butuan, One Collection at a Time.”
+              </span>
+              The smart, reliable way for Butuan City residents to check their waste and
               recycling schedules. Register your address once, and let us handle
               the rest.
             </p>
@@ -185,12 +193,12 @@ export default function LandingPage() {
             <div className="grid grid-cols-1 gap-12 lg:grid-cols-2 lg:items-center">
               <div>
                 <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900">
-                  Keeping our community clean, together.
+                  Keeping Butuan clean, together.
                 </h2>
                 <p className="mt-4 text-base sm:text-lg leading-relaxed text-slate-600">
                   We bridge the gap between municipal waste management and
-                  residents. By providing a clear, accessible scheduling
-                  platform, we reduce missed pickups, improve recycling rates,
+                  residents across Butuan City. By providing a clear, accessible scheduling
+                  platform, ButuanLinis helps reduce missed pickups, improve recycling rates,
                   and maintain cleaner streets for everyone.
                 </p>
                 <ul className="mt-8 space-y-4 text-slate-700">
@@ -258,10 +266,10 @@ export default function LandingPage() {
         <section className="bg-emerald-900 py-16 sm:py-20 text-white relative overflow-hidden">
           <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 text-center relative z-10">
             <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight">
-              Ready to simplify your collection schedule?
+              Ready to keep Butuan clean and green?
             </h2>
             <p className="mx-auto mt-4 max-w-2xl text-base sm:text-lg text-emerald-100/90 leading-relaxed">
-              Register once and always know when to put the bins out.
+              Register once and always know when to put your bins out.
             </p>
             <div className="mt-8 flex justify-center">
               <Show
@@ -289,14 +297,22 @@ export default function LandingPage() {
       {/* Footer */}
       <footer className="bg-white border-t border-slate-200 py-12">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-6">
-          <div className="flex items-center gap-2">
-            <Recycle className="h-5 w-5 text-emerald-600" />
-            <span className="font-semibold text-slate-900">
-              Garbage Collection Schedule
+          <div className="flex flex-col sm:flex-row items-center gap-3 text-center sm:text-left">
+            <div className="flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-600 text-white shadow-2xs">
+                <Recycle className="h-4.5 w-4.5" />
+              </div>
+              <span className="font-bold text-slate-900 text-lg">
+                ButuanLinis
+              </span>
+            </div>
+            <span className="hidden sm:inline text-slate-300">|</span>
+            <span className="text-xs sm:text-sm text-slate-500 italic">
+              “A Cleaner Butuan, One Collection at a Time.”
             </span>
           </div>
           <p className="text-sm text-slate-400">
-            &copy; {new Date().getFullYear()} Garbage Collection Schedule. All rights reserved.
+            &copy; {new Date().getFullYear()} ButuanLinis. All rights reserved.
           </p>
           <div className="flex gap-6 text-sm font-medium text-slate-600">
             <a href="#how-it-works" className="hover:text-slate-900 transition-colors">

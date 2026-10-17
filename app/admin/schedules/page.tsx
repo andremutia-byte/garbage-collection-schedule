@@ -6,7 +6,7 @@ import {
 } from "@/app/actions/admin";
 import { SchedulesClient } from "./SchedulesClient";
 
-export const metadata = { title: "Schedules — GCS Admin" };
+export const metadata = { title: "Schedules — ButuanLinis Admin" };
 
 export default async function SchedulesPage() {
   const [schedules, categories, pickups, addresses] = await Promise.all([

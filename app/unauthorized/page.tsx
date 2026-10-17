@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ArrowLeft, Home, ShieldX } from "lucide-react";
 
-export const metadata = { title: "Unauthorized — GCS" };
+export const metadata = { title: "Unauthorized — ButuanLinis" };
 
 export default function UnauthorizedPage() {
   return (
