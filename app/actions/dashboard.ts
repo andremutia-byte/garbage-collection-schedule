@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { ensureUserSynchronized } from "@/lib/user-sync";
+import { validatePhilippinePhone } from "@/lib/phone";
 
 // ─────────────────────────────────────────────
 // Types
@@ -38,6 +39,7 @@ export interface DashboardData {
   upcomingPickups: UpcomingPickup[];
   allPickups: UpcomingPickup[];
   notificationPref: string;
+  phone: string | null;
   userId: string;
 }
 
@@ -125,18 +127,28 @@ export async function getDashboardData(): Promise<DashboardData | null> {
       .slice(0, 20);
   }
 
-  // Fetch notification preference
-  const { data: profile } = await supabase
-    .from("resident_profiles")
-    .select("notification_preference")
-    .eq("user_id", userId)
-    .maybeSingle();
+  // Fetch notification preference and contact number
+  const [profileRes, userRes] = await Promise.all([
+    supabase
+      .from("resident_profiles")
+      .select("notification_preference, phone")
+      .eq("user_id", userId)
+      .maybeSingle(),
+    supabase
+      .from("users")
+      .select("phone")
+      .eq("id", userId)
+      .maybeSingle(),
+  ]);
+
+  const phone = profileRes.data?.phone || userRes.data?.phone || null;
 
   return {
     addresses,
     upcomingPickups,
     allPickups,
-    notificationPref: profile?.notification_preference ?? "email",
+    notificationPref: profileRes.data?.notification_preference ?? "email",
+    phone,
     userId,
   };
 }
@@ -323,5 +335,60 @@ export async function updateNotificationPref(
   if (error) return { success: false, error: error.message };
 
   revalidatePath("/dashboard");
+  return { success: true };
+}
+
+// ─────────────────────────────────────────────
+// Update resident contact number
+// ─────────────────────────────────────────────
+export async function updateResidentPhone(phone: string): Promise<ActionResult> {
+  const { userId } = await auth();
+  if (!userId) return { success: false, error: "Not authenticated" };
+
+  const trimmed = phone?.trim();
+  if (!trimmed) {
+    return {
+      success: false,
+      error: "Please enter a contact number in Philippine format (e.g., 09XXXXXXXXX or +639XXXXXXXXX).",
+    };
+  }
+
+  const validation = validatePhilippinePhone(trimmed);
+  if (!validation.valid || !validation.normalized) {
+    return {
+      success: false,
+      error: validation.error || "Invalid Philippine mobile number format.",
+    };
+  }
+
+  await ensureUserSynchronized(userId);
+
+  const admin = createAdminSupabaseClient();
+  const now = new Date().toISOString();
+
+  // Update in public.users
+  const { error: userError } = await admin
+    .from("users")
+    .update({ phone: validation.normalized, updated_at: now })
+    .eq("id", userId);
+
+  if (userError) {
+    return { success: false, error: userError.message };
+  }
+
+  // Keep public.resident_profiles in sync
+  const { error: profileError } = await admin
+    .from("resident_profiles")
+    .upsert(
+      { user_id: userId, phone: validation.normalized, updated_at: now },
+      { onConflict: "user_id" }
+    );
+
+  if (profileError) {
+    return { success: false, error: profileError.message };
+  }
+
+  revalidatePath("/dashboard");
+  revalidatePath("/admin/residents");
   return { success: true };
 }

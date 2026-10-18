@@ -77,6 +77,30 @@ async function run() {
     tests.push({ name: "T6: Notifications table reachable", passed: false, detail: e.message });
   }
 
+  // T7: Resident contact number schema & validation check
+  try {
+    const { error: userColErr } = await db.from("users").select("phone").limit(1);
+    const { error: profColErr } = await db.from("resident_profiles").select("phone").limit(1);
+
+    // Philippine phone regex test
+    const valid09 = /^09\d{9}$/.test("09171234567");
+    const valid63 = /^\+639\d{9}$/.test("+639171234567");
+    const invalidPrefix = /^09\d{9}$/.test("08123456789");
+    const invalidLen = /^09\d{9}$/.test("091234");
+    const validationOk = valid09 && valid63 && !invalidPrefix && !invalidLen;
+
+    const schemaOk = !userColErr && !profColErr;
+    tests.push({
+      name: "T7: Resident contact number schema & validation",
+      passed: schemaOk && validationOk,
+      detail: schemaOk && validationOk
+        ? "phone column verified on users and resident_profiles; Philippine mobile format valid."
+        : `Schema errors: ${userColErr?.message ?? "none"} / ${profColErr?.message ?? "none"}`,
+    });
+  } catch (e) {
+    tests.push({ name: "T7: Resident contact number schema & validation", passed: false, detail: e.message });
+  }
+
   console.log("\nResults:");
   let allPassed = true;
   for (const t of tests) {

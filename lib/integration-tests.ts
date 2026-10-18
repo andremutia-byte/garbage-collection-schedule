@@ -12,6 +12,7 @@
 
 import { createClient } from "@supabase/supabase-js";
 import { auth } from "@clerk/nextjs/server";
+import { validatePhilippinePhone } from "@/lib/phone";
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SUPABASE_SECRET = process.env.SUPABASE_SECRET_KEY!;
@@ -466,6 +467,33 @@ export async function runIntegrationTests(userId: string): Promise<TestReport> {
       ? "SUPABASE_SECRET_KEY, SUPABASE_SERVICE_ROLE_KEY, CLERK_SECRET_KEY, CLERK_WEBHOOK_SIGNING_SECRET confirmed server-only. ✅"
       : "⚠ A secret key value matches a NEXT_PUBLIC_ env var — potential security leak!",
   });
+
+  // ─── T11: Resident contact number schema & Philippine phone validation ────
+  try {
+    const v1 = validatePhilippinePhone("09171234567");
+    const v2 = validatePhilippinePhone("+639171234567");
+    const v3 = validatePhilippinePhone("08123456789"); // Invalid prefix
+    const v4 = validatePhilippinePhone("12345"); // Invalid length
+
+    const validationCorrect = v1.valid && v2.valid && !v3.valid && !v4.valid;
+
+    // Verify phone column exists on users and resident_profiles
+    const { error: userColErr } = await db.from("users").select("phone").limit(1);
+    const { error: profColErr } = await db.from("resident_profiles").select("phone").limit(1);
+
+    const schemaCorrect = !userColErr && !profColErr;
+    const passed = validationCorrect && schemaCorrect;
+
+    results.push({
+      name: "T11: Resident contact number schema & Philippine phone validation",
+      passed,
+      detail: passed
+        ? "Phone columns present on users & resident_profiles. Philippine formats (09XXXXXXXXX, +639XXXXXXXXX) validated correctly. ✅"
+        : `Validation passed: ${validationCorrect}. Schema errors: ${userColErr?.message ?? "none"} / ${profColErr?.message ?? "none"}`,
+    });
+  } catch (e: any) {
+    results.push({ name: "T11: Resident contact number check", passed: false, detail: String(e) });
+  }
 
   const passed = results.filter((r) => r.passed).length;
   const failed = results.filter((r) => !r.passed).length;

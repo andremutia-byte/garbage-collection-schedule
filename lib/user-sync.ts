@@ -28,7 +28,7 @@ export async function ensureUserSynchronized(userId: string): Promise<{ success:
   // 1. Check if active user record already exists
   const { data: existingUser, error: checkError } = await admin
     .from("users")
-    .select("id, deleted_at")
+    .select("id, deleted_at, phone")
     .eq("id", userId)
     .maybeSingle();
 
@@ -36,7 +36,7 @@ export async function ensureUserSynchronized(userId: string): Promise<{ success:
     console.error("[user-sync] Error checking user existence:", checkError);
   }
 
-  // If user already exists and is not soft-deleted, ensure resident profile exists and return
+  // If user already exists and is not soft-deleted, ensure resident profile exists (without overwriting phone) and return
   if (existingUser && !existingUser.deleted_at) {
     await admin
       .from("resident_profiles")
@@ -44,8 +44,9 @@ export async function ensureUserSynchronized(userId: string): Promise<{ success:
     return { success: true };
   }
 
-  // 2. Fetch verified email from Clerk
+  // 2. Fetch verified email and optional phone from Clerk
   let email: string | null = null;
+  let phone: string | null = null;
 
   try {
     // Try currentUser() first (from session)
@@ -54,6 +55,10 @@ export async function ensureUserSynchronized(userId: string): Promise<{ success:
       email =
         current.emailAddresses?.find((e) => e.id === current.primaryEmailAddressId)?.emailAddress ||
         current.emailAddresses?.[0]?.emailAddress ||
+        null;
+      phone =
+        current.phoneNumbers?.find((p) => p.id === current.primaryPhoneNumberId)?.phoneNumber ||
+        current.phoneNumbers?.[0]?.phoneNumber ||
         null;
     }
 
@@ -65,6 +70,12 @@ export async function ensureUserSynchronized(userId: string): Promise<{ success:
         clerkUser.emailAddresses?.find((e) => e.id === clerkUser.primaryEmailAddressId)?.emailAddress ||
         clerkUser.emailAddresses?.[0]?.emailAddress ||
         null;
+      if (!phone) {
+        phone =
+          clerkUser.phoneNumbers?.find((p) => p.id === clerkUser.primaryPhoneNumberId)?.phoneNumber ||
+          clerkUser.phoneNumbers?.[0]?.phoneNumber ||
+          null;
+      }
     }
   } catch (clerkErr) {
     console.error("[user-sync] Failed to retrieve user details from Clerk:", clerkErr);
@@ -77,10 +88,12 @@ export async function ensureUserSynchronized(userId: string): Promise<{ success:
     };
   }
 
-  // 3. Call the existing idempotent database function: sync_clerk_user
+  // 3. Call the idempotent database function: sync_clerk_user
+  // Passes phone only if available; does not overwrite existing DB phone
   const { error: syncError } = await admin.rpc("sync_clerk_user", {
     p_clerk_id: userId,
     p_email: email,
+    p_phone: phone || undefined,
   });
 
   if (syncError) {
@@ -88,7 +101,7 @@ export async function ensureUserSynchronized(userId: string): Promise<{ success:
     return { success: false, error: syncError.message };
   }
 
-  // 4. Ensure resident_profiles record exists
+  // 4. Ensure resident_profiles record exists without overwriting existing data
   const { error: profileError } = await admin
     .from("resident_profiles")
     .upsert({ user_id: userId }, { onConflict: "user_id", ignoreDuplicates: true });

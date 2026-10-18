@@ -46,6 +46,23 @@ function resolvePrimaryEmail(
   return typeof fallback === "string" && fallback.length > 0 ? fallback : null;
 }
 
+function resolvePrimaryPhone(
+  primaryPhoneId: string | null | undefined,
+  phoneNumbers: Array<{ id: string; phone_number: string }> | undefined | null
+): string | null {
+  if (!Array.isArray(phoneNumbers) || phoneNumbers.length === 0) {
+    return null;
+  }
+  if (primaryPhoneId) {
+    const match = phoneNumbers.find((p) => p.id === primaryPhoneId);
+    if (match?.phone_number && match.phone_number.trim().length > 0) {
+      return match.phone_number.trim();
+    }
+  }
+  const fallback = phoneNumbers[0]?.phone_number;
+  return typeof fallback === "string" && fallback.trim().length > 0 ? fallback.trim() : null;
+}
+
 // ---------------------------------------------------------------------------
 // POST handler — called by Clerk/Svix for every subscribed event
 // ---------------------------------------------------------------------------
@@ -79,6 +96,12 @@ export async function POST(req: NextRequest) {
     // the email_addresses array, with fallback to first email if primary ID is unset.
     const email = resolvePrimaryEmail(primary_email_address_id, email_addresses);
 
+    // Resolve optional phone number if present in Clerk payload
+    const phone = resolvePrimaryPhone(
+      (evt.data as any).primary_phone_number_id,
+      (evt.data as any).phone_numbers
+    );
+
     if (!email) {
       console.error(
         `[clerk-webhook] ${eventType} for user ${clerkId} has no usable email address.`
@@ -92,12 +115,13 @@ export async function POST(req: NextRequest) {
     // Call sync_clerk_user() via the service-role client.
     // This function handles both INSERT (new user) and UPDATE (email change)
     // via ON CONFLICT DO UPDATE — it is fully idempotent.
-    // It also assigns the default 'resident' role if no roles exist yet.
+    // If phone is null or empty, existing DB phone is preserved (never overwritten).
     try {
       const adminClient = createAdminSupabaseClient();
       const { error } = await adminClient.rpc("sync_clerk_user", {
         p_clerk_id: clerkId,
         p_email: email,
+        p_phone: phone || undefined,
       });
 
       if (error) {
@@ -109,7 +133,7 @@ export async function POST(req: NextRequest) {
         return new Response("Database sync failed", { status: 500 });
       }
 
-      // Ensure resident_profiles exists
+      // Ensure resident_profiles exists without overwriting existing data
       await adminClient
         .from("resident_profiles")
         .upsert({ user_id: clerkId }, { onConflict: "user_id", ignoreDuplicates: true });

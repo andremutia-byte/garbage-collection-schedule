@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { requireAdmin } from "@/lib/admin-auth";
+import { validatePhilippinePhone } from "@/lib/phone";
 
 // ─────────────────────────────────────────────
 // Shared result type
@@ -192,6 +193,7 @@ export async function getAdminStats(): Promise<AdminStats> {
 export interface AdminResident {
   id: string;
   email: string;
+  phone: string | null;
   created_at: string;
   roles: string[];
   address_count: number;
@@ -204,7 +206,7 @@ export async function getAdminResidents(): Promise<AdminResident[]> {
 
   const { data: users } = await db
     .from("users")
-    .select("id, email, created_at")
+    .select("id, email, phone, created_at")
     .is("deleted_at", null)
     .order("created_at", { ascending: false });
 
@@ -215,7 +217,7 @@ export async function getAdminResidents(): Promise<AdminResident[]> {
   const [rolesRes, addrCountRes, profilesRes] = await Promise.all([
     db.from("user_roles").select("user_id, role").in("user_id", userIds),
     db.from("user_addresses").select("user_id").in("user_id", userIds),
-    db.from("resident_profiles").select("user_id, notification_preference").in("user_id", userIds),
+    db.from("resident_profiles").select("user_id, phone, notification_preference").in("user_id", userIds),
   ]);
 
   const rolesByUser: Record<string, string[]> = {};
@@ -229,19 +231,65 @@ export async function getAdminResidents(): Promise<AdminResident[]> {
     addrCountByUser[a.user_id] = (addrCountByUser[a.user_id] ?? 0) + 1;
   }
 
-  const profileByUser: Record<string, string | null> = {};
+  const profileByUser: Record<string, { phone: string | null; notification_preference: string | null }> = {};
   for (const p of profilesRes.data ?? []) {
-    profileByUser[p.user_id] = p.notification_preference;
+    profileByUser[p.user_id] = {
+      phone: p.phone,
+      notification_preference: p.notification_preference,
+    };
   }
 
   return users.map((u) => ({
     id: u.id,
     email: u.email,
+    phone: u.phone || profileByUser[u.id]?.phone || null,
     created_at: u.created_at,
     roles: rolesByUser[u.id] ?? [],
     address_count: addrCountByUser[u.id] ?? 0,
-    notification_preference: profileByUser[u.id] ?? null,
+    notification_preference: profileByUser[u.id]?.notification_preference ?? null,
   }));
+}
+
+export async function updateResidentContact(
+  targetUserId: string,
+  phone: string
+): Promise<ActionResult> {
+  await requireAdmin();
+
+  const trimmed = phone?.trim();
+  let normalizedPhone: string | null = null;
+
+  if (trimmed) {
+    const validation = validatePhilippinePhone(trimmed);
+    if (!validation.valid || !validation.normalized) {
+      return {
+        success: false,
+        error: validation.error || "Invalid Philippine mobile number format.",
+      };
+    }
+    normalizedPhone = validation.normalized;
+  }
+
+  const db = createAdminSupabaseClient();
+  const now = new Date().toISOString();
+
+  const { error: userError } = await db
+    .from("users")
+    .update({ phone: normalizedPhone, updated_at: now })
+    .eq("id", targetUserId);
+
+  if (userError) return { success: false, error: userError.message };
+
+  await db
+    .from("resident_profiles")
+    .upsert(
+      { user_id: targetUserId, phone: normalizedPhone, updated_at: now },
+      { onConflict: "user_id" }
+    );
+
+  revalidatePath("/admin/residents");
+  revalidatePath("/dashboard");
+  return { success: true };
 }
 
 export async function updateUserRole(
