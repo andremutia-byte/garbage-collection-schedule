@@ -100,7 +100,7 @@ export default function LandingPage() {
               recycling schedules. Register your address once, and let us handle
               the rest.
             </p>
-            <div className="mt-10 flex items-center justify-center gap-4 flex-wrap">
+            <div className="mt-10 flex justify-center">
               <Show
                 when="signed-in"
                 fallback={
@@ -117,13 +117,6 @@ export default function LandingPage() {
                 >
                   View My Schedule
                 </Link>
-              </Show>
-              <Show when="signed-out">
-                <SignInButton mode="modal">
-                  <button className="rounded-full border border-slate-200 bg-white px-8 py-3.5 text-sm sm:text-base font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 transition-colors cursor-pointer">
-                    Sign In
-                  </button>
-                </SignInButton>
               </Show>
             </div>
           </div>
