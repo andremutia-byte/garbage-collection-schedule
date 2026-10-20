@@ -453,6 +453,23 @@ export interface AdminSchedule {
   day_of_week: number | null;
   start_date: string;
   end_date: string | null;
+  barangay_id: string | null;
+  barangay_name: string;
+}
+
+export interface AdminBarangay {
+  id: string;
+  name: string;
+}
+
+export async function getAdminBarangays(): Promise<AdminBarangay[]> {
+  await requireAdmin();
+  const db = createAdminSupabaseClient();
+  const { data } = await db
+    .from("barangays")
+    .select("id, name")
+    .order("name", { ascending: true });
+  return data ?? [];
 }
 
 const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -464,8 +481,9 @@ export async function getAdminSchedules(): Promise<AdminSchedule[]> {
   const { data } = await db
     .from("schedules")
     .select(`
-      id, waste_category_id, frequency, day_of_week, start_date, end_date,
-      waste_categories ( name, color_code )
+      id, waste_category_id, frequency, day_of_week, start_date, end_date, barangay_id,
+      waste_categories ( name, color_code ),
+      barangays ( id, name )
     `)
     .is("deleted_at", null)
     .order("start_date", { ascending: false });
@@ -479,33 +497,57 @@ export async function getAdminSchedules(): Promise<AdminSchedule[]> {
     day_of_week: s.day_of_week,
     start_date: s.start_date,
     end_date: s.end_date,
+    barangay_id: s.barangay_id ?? null,
+    barangay_name: (s.barangays as any)?.name ?? "All Barangays",
   }));
 }
 
-export async function createSchedule(formData: FormData): Promise<ActionResult<{ id: string }>> {
+export async function createSchedule(formData: FormData): Promise<ActionResult<{ id?: string; count?: number }>> {
   await requireAdmin();
   const waste_category_id = (formData.get("waste_category_id") as string)?.trim();
   const frequency = (formData.get("frequency") as string)?.trim() as "weekly" | "biweekly" | "monthly" | "custom";
   const day_of_week_str = (formData.get("day_of_week") as string)?.trim();
   const start_date = (formData.get("start_date") as string)?.trim();
   const end_date = (formData.get("end_date") as string)?.trim() || null;
+  const applies_to = (formData.get("applies_to") as string)?.trim() || "all";
+  const rawBarangayIds = formData.getAll("barangay_ids") as string[];
 
   if (!waste_category_id || !frequency || !start_date) {
     return { success: false, error: "Category, frequency, and start date are required." };
   }
 
   const day_of_week = day_of_week_str !== "" && day_of_week_str !== null ? parseInt(day_of_week_str, 10) : null;
-
   const db = createAdminSupabaseClient();
-  const { data, error } = await db
-    .from("schedules")
-    .insert({ waste_category_id, frequency, day_of_week, start_date, end_date })
-    .select("id")
-    .single();
+  const validBarangayIds = rawBarangayIds.filter((b) => b && b !== "all");
 
+  if (applies_to === "all" || validBarangayIds.length === 0) {
+    const { data, error } = await db
+      .from("schedules")
+      .insert({ waste_category_id, frequency, day_of_week, start_date, end_date, barangay_id: null })
+      .select("id")
+      .single();
+
+    if (error) return { success: false, error: error.message };
+    revalidatePath("/admin/schedules");
+    revalidatePath("/schedule");
+    return { success: true, data: { id: data.id, count: 1 } };
+  }
+
+  const rows = validBarangayIds.map((bId) => ({
+    waste_category_id,
+    frequency,
+    day_of_week,
+    start_date,
+    end_date,
+    barangay_id: bId,
+  }));
+
+  const { data, error } = await db.from("schedules").insert(rows).select("id");
   if (error) return { success: false, error: error.message };
+
   revalidatePath("/admin/schedules");
-  return { success: true, data: { id: data.id } };
+  revalidatePath("/schedule");
+  return { success: true, data: { count: data.length, id: data[0]?.id } };
 }
 
 export async function updateSchedule(
@@ -518,6 +560,9 @@ export async function updateSchedule(
   const day_of_week_str = (formData.get("day_of_week") as string)?.trim();
   const start_date = (formData.get("start_date") as string)?.trim();
   const end_date = (formData.get("end_date") as string)?.trim() || null;
+  const applies_to = (formData.get("applies_to") as string)?.trim() || "all";
+  const barangay_id_raw = (formData.get("barangay_id") as string)?.trim();
+  const barangay_id = applies_to === "all" || !barangay_id_raw || barangay_id_raw === "all" ? null : barangay_id_raw;
 
   if (!waste_category_id || !frequency || !start_date) {
     return { success: false, error: "Category, frequency, and start date are required." };
@@ -528,11 +573,20 @@ export async function updateSchedule(
   const db = createAdminSupabaseClient();
   const { error } = await db
     .from("schedules")
-    .update({ waste_category_id, frequency, day_of_week, start_date, end_date, updated_at: new Date().toISOString() })
+    .update({
+      waste_category_id,
+      frequency,
+      day_of_week,
+      start_date,
+      end_date,
+      barangay_id,
+      updated_at: new Date().toISOString(),
+    })
     .eq("id", scheduleId);
 
   if (error) return { success: false, error: error.message };
   revalidatePath("/admin/schedules");
+  revalidatePath("/schedule");
   return { success: true };
 }
 
@@ -655,7 +709,7 @@ export async function generatePickupsFromSchedule(
   // Fetch the schedule rule
   const { data: sched, error: schedErr } = await db
     .from("schedules")
-    .select("waste_category_id, frequency, day_of_week, start_date, end_date")
+    .select("waste_category_id, frequency, day_of_week, start_date, end_date, barangay_id")
     .eq("id", scheduleId)
     .is("deleted_at", null)
     .single();
@@ -663,11 +717,12 @@ export async function generatePickupsFromSchedule(
   if (schedErr || !sched) return { success: false, error: "Schedule not found." };
   if (sched.day_of_week === null) return { success: false, error: "Schedule has no day_of_week set." };
 
-  // Fetch all active addresses city-wide
-  const { data: addrs } = await db
-    .from("addresses")
-    .select("id")
-    .is("deleted_at", null);
+  // Fetch active addresses (filtered by barangay_id if schedule is barangay-scoped)
+  let addrQuery = db.from("addresses").select("id").is("deleted_at", null);
+  if (sched.barangay_id) {
+    addrQuery = addrQuery.eq("barangay_id", sched.barangay_id);
+  }
+  const { data: addrs } = await addrQuery;
 
   if (!addrs || addrs.length === 0) {
     return { success: false, error: "No active addresses found." };

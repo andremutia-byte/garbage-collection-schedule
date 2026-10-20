@@ -16,6 +16,7 @@ import type {
   AdminSchedule,
   AdminCategory,
   AdminPickup,
+  AdminBarangay,
 } from "@/app/actions/admin";
 import {
   createSchedule,
@@ -52,6 +53,7 @@ interface Props {
   categories: AdminCategory[];
   pickups: AdminPickup[];
   addresses: AddressItem[];
+  barangays: AdminBarangay[];
 }
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -78,20 +80,56 @@ function formatDate(iso: string) {
 function ScheduleForm({
   initial,
   categories,
+  barangays,
   onClose,
   onSuccess,
 }: {
   initial?: AdminSchedule;
   categories: AdminCategory[];
+  barangays: AdminBarangay[];
   onClose: () => void;
   onSuccess: (msg: string) => void;
 }) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
+  // Scope: "all" or "specific"
+  const [appliesTo, setAppliesTo] = useState<"all" | "specific">(
+    initial?.barangay_id ? "specific" : "all"
+  );
+  const [selectedBarangayIds, setSelectedBarangayIds] = useState<string[]>(
+    initial?.barangay_id ? [initial.barangay_id] : []
+  );
+  const [barangaySearch, setBarangaySearch] = useState("");
+
+  const filteredBarangays = barangays.filter((b) =>
+    b.name.toLowerCase().includes(barangaySearch.toLowerCase())
+  );
+
+  const toggleBarangay = (id: string) => {
+    setSelectedBarangayIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  const selectAllFiltered = () => {
+    const idsToAdd = filteredBarangays.map((b) => b.id);
+    setSelectedBarangayIds((prev) => Array.from(new Set([...prev, ...idsToAdd])));
+  };
+
+  const clearSelection = () => {
+    setSelectedBarangayIds([]);
+  };
+
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
+
+    if (appliesTo === "specific" && selectedBarangayIds.length === 0) {
+      setError("Please select at least one barangay, or choose 'All Barangays'.");
+      return;
+    }
+
     const fd = new FormData(e.currentTarget);
     startTransition(async () => {
       const result = initial
@@ -108,6 +146,140 @@ function ScheduleForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {/* Scope Selector: All Barangays vs Specific */}
+      <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+        <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-2">
+          Applicable Barangay(s)
+        </label>
+        <input type="hidden" name="applies_to" value={appliesTo} />
+
+        <div className="grid grid-cols-2 gap-2 mb-3">
+          <button
+            type="button"
+            onClick={() => setAppliesTo("all")}
+            className={`flex items-center justify-center gap-2 rounded-xl py-2 px-3 text-xs font-semibold transition border cursor-pointer ${
+              appliesTo === "all"
+                ? "bg-emerald-600 text-white border-emerald-600 shadow-xs"
+                : "bg-white text-slate-700 border-slate-200 hover:bg-slate-100"
+            }`}
+          >
+            All Barangays (City-wide)
+          </button>
+          <button
+            type="button"
+            onClick={() => setAppliesTo("specific")}
+            className={`flex items-center justify-center gap-2 rounded-xl py-2 px-3 text-xs font-semibold transition border cursor-pointer ${
+              appliesTo === "specific"
+                ? "bg-emerald-600 text-white border-emerald-600 shadow-xs"
+                : "bg-white text-slate-700 border-slate-200 hover:bg-slate-100"
+            }`}
+          >
+            {initial ? "Single Barangay" : "Select Specific Barangay(s)"}
+          </button>
+        </div>
+
+        {appliesTo === "specific" && (
+          <div className="mt-3 space-y-3 pt-3 border-t border-slate-200">
+            {initial ? (
+              /* When editing: single selector */
+              <Field label="Target Barangay" required>
+                <Select
+                  name="barangay_id"
+                  defaultValue={initial.barangay_id ?? ""}
+                  required
+                >
+                  <option value="">Select a barangay…</option>
+                  {barangays.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.name}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            ) : (
+              /* When creating: multi-select with search and bulk toggle */
+              <div>
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <div className="text-xs text-slate-600 font-medium">
+                    <span className="font-semibold text-emerald-700">
+                      {selectedBarangayIds.length}
+                    </span>{" "}
+                    of {barangays.length} barangays selected
+                  </div>
+                  <div className="flex items-center gap-2 text-xs">
+                    <button
+                      type="button"
+                      onClick={selectAllFiltered}
+                      className="text-emerald-700 hover:underline font-medium cursor-pointer"
+                    >
+                      Select all ({filteredBarangays.length})
+                    </button>
+                    <span className="text-slate-300">|</span>
+                    <button
+                      type="button"
+                      onClick={clearSelection}
+                      className="text-slate-500 hover:underline cursor-pointer"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                </div>
+
+                <div className="relative mb-2">
+                  <Search className="h-3.5 w-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    placeholder="Search barangay name…"
+                    value={barangaySearch}
+                    onChange={(e) => setBarangaySearch(e.target.value)}
+                    className="w-full rounded-xl border border-slate-200 bg-white pl-8 pr-3 py-1.5 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+
+                {/* Hidden form inputs for selected barangays */}
+                {selectedBarangayIds.map((bId) => (
+                  <input key={bId} type="hidden" name="barangay_ids" value={bId} />
+                ))}
+
+                <div className="max-h-48 overflow-y-auto rounded-xl border border-slate-200 bg-white p-2 divide-y divide-slate-100 text-xs">
+                  {filteredBarangays.length === 0 ? (
+                    <div className="py-4 text-center text-slate-400">
+                      No barangays match &quot;{barangaySearch}&quot;
+                    </div>
+                  ) : (
+                    filteredBarangays.map((b) => {
+                      const isChecked = selectedBarangayIds.includes(b.id);
+                      return (
+                        <label
+                          key={b.id}
+                          className="flex items-center gap-2.5 py-1.5 px-2 rounded-lg hover:bg-slate-50 cursor-pointer"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => toggleBarangay(b.id)}
+                            className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                          />
+                          <span
+                            className={
+                              isChecked
+                                ? "font-semibold text-emerald-900"
+                                : "text-slate-700"
+                            }
+                          >
+                            {b.name}
+                          </span>
+                        </label>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Field label="Waste Category" required>
           <Select name="waste_category_id" defaultValue={initial?.waste_category_id ?? ""} required>
@@ -332,7 +504,7 @@ function PickupStatusSelect({
 
 type Tab = "schedules" | "pickups";
 
-export function SchedulesClient({ schedules, categories, pickups, addresses }: Props) {
+export function SchedulesClient({ schedules, categories, pickups, addresses, barangays }: Props) {
   const [tab, setTab] = useState<Tab>("schedules");
   const [showCreateSched, setShowCreateSched] = useState(false);
   const [showCreatePickup, setShowCreatePickup] = useState(false);
@@ -342,6 +514,13 @@ export function SchedulesClient({ schedules, categories, pickups, addresses }: P
   const [successMsg, setSuccessMsg] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
   const [pickupSearch, setPickupSearch] = useState("");
+  const [scheduleBarangayFilter, setScheduleBarangayFilter] = useState("all");
+
+  const filteredSchedules = schedules.filter((s) => {
+    if (scheduleBarangayFilter === "all") return true;
+    if (scheduleBarangayFilter === "citywide") return !s.barangay_id;
+    return s.barangay_id === scheduleBarangayFilter;
+  });
 
   const filteredPickups = pickups.filter((p) => {
     if (!pickupSearch.trim()) return true;
@@ -428,10 +607,29 @@ export function SchedulesClient({ schedules, categories, pickups, addresses }: P
             />
           ) : (
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+              <div className="p-3 bg-slate-50 border-b border-slate-100 flex items-center justify-between gap-4">
+                <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  Filter by Barangay:
+                </span>
+                <select
+                  value={scheduleBarangayFilter}
+                  onChange={(e) => setScheduleBarangayFilter(e.target.value)}
+                  className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                >
+                  <option value="all">All Rules ({schedules.length})</option>
+                  <option value="citywide">City-wide (All Barangays)</option>
+                  {barangays.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead className="bg-slate-50 border-b border-slate-100">
                     <tr>
+                      <th className="text-left px-4 py-3 font-medium text-slate-500">Scope / Barangay</th>
                       <th className="text-left px-4 py-3 font-medium text-slate-500">Category</th>
                       <th className="text-left px-4 py-3 font-medium text-slate-500">Frequency</th>
                       <th className="text-left px-4 py-3 font-medium text-slate-500">Day</th>
@@ -440,8 +638,19 @@ export function SchedulesClient({ schedules, categories, pickups, addresses }: P
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50">
-                    {schedules.map((s) => (
+                    {filteredSchedules.map((s) => (
                       <tr key={s.id} className="hover:bg-slate-50/50">
+                        <td className="px-4 py-3">
+                          {s.barangay_id ? (
+                            <span className="inline-flex items-center gap-1 text-xs font-semibold rounded-full bg-slate-100 border border-slate-200 px-2.5 py-0.5 text-slate-700">
+                              {s.barangay_name}
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-xs font-semibold rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 text-emerald-800">
+                              City-wide (All)
+                            </span>
+                          )}
+                        </td>
                         <td className="px-4 py-3">
                           <span
                             className="inline-flex items-center gap-1.5 text-xs font-medium rounded-full px-2.5 py-0.5"
@@ -620,13 +829,13 @@ export function SchedulesClient({ schedules, categories, pickups, addresses }: P
       {/* Modals */}
       {showCreateSched && (
         <Modal title="New Schedule Rule" subtitle="Define a recurring collection rule for the municipality" onClose={() => setShowCreateSched(false)} wide>
-          <ScheduleForm categories={categories} onClose={() => setShowCreateSched(false)} onSuccess={(m) => setSuccessMsg(m)} />
+          <ScheduleForm categories={categories} barangays={barangays} onClose={() => setShowCreateSched(false)} onSuccess={(m) => setSuccessMsg(m)} />
         </Modal>
       )}
 
       {editSched && (
         <Modal title="Edit Schedule Rule" subtitle={editSched.category_name} onClose={() => setEditSched(null)} wide>
-          <ScheduleForm initial={editSched} categories={categories} onClose={() => setEditSched(null)} onSuccess={(m) => setSuccessMsg(m)} />
+          <ScheduleForm initial={editSched} categories={categories} barangays={barangays} onClose={() => setEditSched(null)} onSuccess={(m) => setSuccessMsg(m)} />
         </Modal>
       )}
 

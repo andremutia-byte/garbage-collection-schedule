@@ -1,8 +1,8 @@
-"use client";
-
 import { Show } from "@clerk/nextjs";
 import { SignInButton, SignUpButton, UserButton } from "@clerk/nextjs";
 import Link from "next/link";
+import Hero from "@/components/Hero";
+import { getBarangays } from "@/app/actions/barangays";
 import {
   ArrowRight,
   BellRing,
@@ -12,7 +12,8 @@ import {
   Trash2,
 } from "lucide-react";
 
-export default function LandingPage() {
+export default async function LandingPage() {
+  const barangays = await getBarangays();
   return (
     <div className="flex min-h-screen flex-col bg-slate-50 text-slate-900 font-sans selection:bg-emerald-200">
       {/* Navigation */}
@@ -78,49 +79,10 @@ export default function LandingPage() {
 
       <main className="flex-1">
         {/* Hero Section */}
-        <section className="relative overflow-hidden bg-white pt-20 pb-28 sm:pt-24 sm:pb-32">
-          {/* Subtle background grid */}
+        <div className="relative overflow-hidden bg-white">
           <div className="absolute inset-0 bg-[linear-gradient(to_right,#8080800d_1px,transparent_1px),linear-gradient(to_bottom,#8080800d_1px,transparent_1px)] bg-[size:24px_24px]" />
-
-          <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 text-center">
-            <div className="mx-auto mb-6 inline-flex items-center gap-2 rounded-full bg-emerald-50 px-4 py-1.5 text-xs sm:text-sm font-semibold text-emerald-800 ring-1 ring-emerald-200 shadow-2xs">
-              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-              ButuanLinis &bull; City of Butuan Waste Management
-            </div>
-            <h1 className="mx-auto max-w-4xl text-3xl font-extrabold tracking-tight text-slate-900 sm:text-5xl lg:text-6xl">
-              Never Miss a{" "}
-              <span className="text-emerald-600">Garbage Collection</span> Day
-              in Butuan
-            </h1>
-            <p className="mx-auto mt-6 max-w-2xl text-base sm:text-lg leading-relaxed text-slate-600">
-              <span className="font-semibold text-emerald-800 block text-lg sm:text-xl mb-1">
-                “A Cleaner Butuan, One Collection at a Time.”
-              </span>
-              The smart, reliable way for Butuan City residents to check their waste and
-              recycling schedules. Register your address once, and let us handle
-              the rest.
-            </p>
-            <div className="mt-10 flex justify-center">
-              <Show
-                when="signed-in"
-                fallback={
-                  <SignUpButton mode="modal">
-                    <button className="rounded-full bg-emerald-600 px-8 py-3.5 text-sm sm:text-base font-semibold text-white shadow-xs hover:bg-emerald-700 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer">
-                      View My Schedule
-                    </button>
-                  </SignUpButton>
-                }
-              >
-                <Link
-                  href="/dashboard"
-                  className="rounded-full bg-emerald-600 px-8 py-3.5 text-sm sm:text-base font-semibold text-white shadow-xs hover:bg-emerald-700 transition-all hover:scale-[1.02] active:scale-[0.98] inline-block"
-                >
-                  View My Schedule
-                </Link>
-              </Show>
-            </div>
-          </div>
-        </section>
+          <Hero initialBarangays={barangays} />
+        </div>
 
         {/* How It Works */}
         <section id="how-it-works" className="bg-slate-50 py-20 sm:py-24 scroll-mt-16 border-t border-slate-100">
