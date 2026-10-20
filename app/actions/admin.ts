@@ -50,6 +50,7 @@ export interface CollectionActivityItem {
     unit: string | null;
     city: string;
     postal_code: string;
+    barangay_name?: string | null;
   };
   resident_email: string | null;
 }
@@ -57,6 +58,7 @@ export interface CollectionActivityItem {
 export interface AdminStats {
   totalResidents: number;
   totalAddresses: number;
+  activeSchedules: number;
   upcomingPickups: number;
   completedPickups: number;
   missedPickups: number;
@@ -73,9 +75,10 @@ export async function getAdminStats(): Promise<AdminStats> {
   const db = createAdminSupabaseClient();
   const today = new Date().toISOString().slice(0, 10);
 
-  const [residents, addresses, categories, pickups, activity] = await Promise.all([
+  const [residents, addresses, activeSchedulesRes, categories, pickups, activity] = await Promise.all([
     db.from("users").select("*", { count: "exact", head: true }).is("deleted_at", null),
     db.from("addresses").select("*", { count: "exact", head: true }).is("deleted_at", null),
+    db.from("schedules").select("*", { count: "exact", head: true }).eq("is_active", true).is("deleted_at", null),
     db.from("waste_categories").select("id, name, color_code").order("name"),
     db.from("pickups").select("id, status, scheduled_date, waste_category_id").is("deleted_at", null),
     db.from("pickups").select(`
@@ -86,13 +89,14 @@ export async function getAdminStats(): Promise<AdminStats> {
       completion_time,
       addresses (
         id, street, unit, city, postal_code,
+        barangays ( id, name ),
         user_addresses (
           user_id,
           users ( id, email )
         )
       ),
       waste_categories ( id, name, color_code )
-    `).is("deleted_at", null).order("scheduled_date", { ascending: false }).limit(25),
+    `).is("deleted_at", null).order("scheduled_date", { ascending: false }).limit(100),
   ]);
 
   const allPickups = pickups.data ?? [];
@@ -112,7 +116,7 @@ export async function getAdminStats(): Promise<AdminStats> {
     label: string;
     color: string;
   }> = [
-    { status: "scheduled", label: "Scheduled / Upcoming", color: "amber" },
+    { status: "scheduled", label: "Scheduled", color: "amber" },
     { status: "completed", label: "Completed", color: "emerald" },
     { status: "missed", label: "Missed", color: "rose" },
     { status: "skipped", label: "Skipped", color: "slate" },
@@ -144,6 +148,7 @@ export async function getAdminStats(): Promise<AdminStats> {
   // Recent activity list
   const recentPickups: CollectionActivityItem[] = (activity.data ?? []).map((p) => {
     const addr = p.addresses as any;
+    const bar = addr?.barangays as any;
     const userAddrs = addr?.user_addresses ?? [];
     const emails: string[] = userAddrs
       .map((ua: any) => ua?.users?.email)
@@ -167,6 +172,7 @@ export async function getAdminStats(): Promise<AdminStats> {
         unit: addr?.unit ?? null,
         city: addr?.city ?? "",
         postal_code: addr?.postal_code ?? "",
+        barangay_name: bar?.name ?? null,
       },
       resident_email: residentEmail,
     };
@@ -175,6 +181,7 @@ export async function getAdminStats(): Promise<AdminStats> {
   return {
     totalResidents: residents.count ?? 0,
     totalAddresses: addresses.count ?? 0,
+    activeSchedules: activeSchedulesRes.count ?? 0,
     upcomingPickups: upcomingCount,
     completedPickups: completedCount,
     missedPickups: missedCount,
@@ -658,7 +665,7 @@ export async function deleteSchedule(scheduleId: string): Promise<ActionResult> 
 export interface AdminPickup {
   id: string;
   address: { street: string; city: string; postal_code: string };
-  waste_category: { name: string; color_code: string | null };
+  waste_category: { id: string; name: string; color_code: string | null };
   scheduled_date: string;
   status: string;
   notes: string | null;
@@ -673,7 +680,7 @@ export async function getAdminPickups(limit = 50): Promise<AdminPickup[]> {
     .select(`
       id, scheduled_date, status, notes,
       addresses ( street, city, postal_code ),
-      waste_categories ( name, color_code )
+      waste_categories ( id, name, color_code )
     `)
     .is("deleted_at", null)
     .order("scheduled_date", { ascending: true })
@@ -684,7 +691,11 @@ export async function getAdminPickups(limit = 50): Promise<AdminPickup[]> {
     return {
       id: p.id,
       address: { street: addr?.street ?? "", city: addr?.city ?? "", postal_code: addr?.postal_code ?? "" },
-      waste_category: { name: (p.waste_categories as any)?.name ?? "", color_code: (p.waste_categories as any)?.color_code ?? null },
+      waste_category: {
+        id: (p.waste_categories as any)?.id ?? "",
+        name: (p.waste_categories as any)?.name ?? "",
+        color_code: (p.waste_categories as any)?.color_code ?? null,
+      },
       scheduled_date: p.scheduled_date,
       status: p.status,
       notes: p.notes,

@@ -58,28 +58,21 @@ function timeAgo(iso: string): string {
 function NotificationItem({
   notification,
   onRead,
+  isActionPending,
 }: {
   notification: ResidentNotification;
   onRead: (id: string) => void;
+  isActionPending: boolean;
 }) {
-  const [isPending, startTransition] = useTransition();
   const isUnread = !notification.read_at;
   const catName = notification.pickup?.waste_category?.name ?? null;
-
-  const handleRead = () => {
-    if (!isUnread || isPending) return;
-    startTransition(async () => {
-      await markNotificationRead(notification.id);
-      onRead(notification.id);
-    });
-  };
 
   return (
     <div
       className={`relative flex items-start gap-3 rounded-xl border p-3 transition-all ${
         isUnread
-          ? "border-emerald-200 bg-emerald-50/70 shadow-2xs"
-          : "border-slate-100 bg-white opacity-85 hover:opacity-100"
+          ? "border-emerald-200 bg-emerald-50/80 shadow-2xs"
+          : "border-slate-200/70 bg-slate-50/50 hover:bg-white hover:border-slate-300 transition-colors"
       }`}
     >
       {/* Category icon */}
@@ -103,7 +96,7 @@ function NotificationItem({
 
         {notification.pickup?.scheduled_date && (
           <p className="flex items-center gap-1 text-[11px] text-slate-500 mt-1 font-medium">
-            <CalendarDays className="h-3 w-3 text-emerald-600 shrink-0" />
+            <CalendarDays className={`h-3 w-3 shrink-0 ${isUnread ? "text-emerald-600" : "text-slate-400"}`} />
             {new Date(notification.pickup.scheduled_date + "T00:00:00").toLocaleDateString(
               "en-US",
               { weekday: "short", month: "short", day: "numeric" }
@@ -116,12 +109,13 @@ function NotificationItem({
             {timeAgo(notification.created_at)}
           </span>
           {isUnread ? (
-            <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-800 bg-emerald-100 border border-emerald-200 px-1.5 py-0.2 rounded-full">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+            <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-800 bg-emerald-100 border border-emerald-200 px-1.5 py-0.5 rounded-full">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
               Unread
             </span>
           ) : (
-            <span className="text-[10px] text-slate-400">
+            <span className="inline-flex items-center gap-1 text-[10px] font-medium text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded-full border border-slate-200/60">
+              <Check className="h-2.5 w-2.5 text-slate-400" />
               Read
             </span>
           )}
@@ -133,12 +127,13 @@ function NotificationItem({
         {isUnread && (
           <button
             type="button"
-            onClick={handleRead}
-            disabled={isPending}
+            onClick={() => onRead(notification.id)}
+            disabled={isActionPending}
             title="Mark as read"
+            aria-label="Mark notification as read"
             className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 hover:text-emerald-700 hover:bg-emerald-100/70 transition-colors disabled:opacity-50 cursor-pointer"
           >
-            {isPending ? (
+            {isActionPending ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : (
               <Check className="h-3.5 w-3.5" />
@@ -167,8 +162,24 @@ export function NotificationBellDropdown({
   const unreadCount = notifications.filter((n) => !n.read_at).length;
 
   // Sync state if initialNotifications changes (e.g. server revalidation)
+  // Preserves locally marked read status to prevent transient stale server data from reverting read items
   useEffect(() => {
-    setNotifications(initialNotifications);
+    setNotifications((prev) => {
+      const readMap = new Map<string, string>();
+      for (const p of prev) {
+        if (p.read_at) {
+          readMap.set(p.id, p.read_at);
+        }
+      }
+
+      return initialNotifications.map((n) => {
+        const locallyReadAt = readMap.get(n.id);
+        if (locallyReadAt && !n.read_at) {
+          return { ...n, read_at: locallyReadAt };
+        }
+        return n;
+      });
+    });
   }, [initialNotifications]);
 
   // Close when clicking outside
@@ -202,19 +213,33 @@ export function NotificationBellDropdown({
   }, [isOpen]);
 
   const handleReadSingle = (id: string) => {
-    setNotifications((prev) =>
-      prev.map((n) =>
-        n.id === id ? { ...n, read_at: new Date().toISOString() } : n
+    const previous = notifications;
+    setNotifications((curr) =>
+      curr.map((n) =>
+        n.id === id ? { ...n, read_at: n.read_at ?? new Date().toISOString() } : n
       )
     );
+
+    startTransition(async () => {
+      const res = await markNotificationRead(id);
+      if (!res.success) {
+        setNotifications(previous);
+      }
+    });
   };
 
   const handleMarkAll = () => {
+    const previous = notifications;
+    const nowIso = new Date().toISOString();
+    setNotifications((curr) =>
+      curr.map((n) => ({ ...n, read_at: n.read_at ?? nowIso }))
+    );
+
     startTransition(async () => {
-      await markAllNotificationsRead();
-      setNotifications((prev) =>
-        prev.map((n) => ({ ...n, read_at: n.read_at ?? new Date().toISOString() }))
-      );
+      const res = await markAllNotificationsRead();
+      if (!res.success) {
+        setNotifications(previous);
+      }
     });
   };
 
@@ -320,6 +345,7 @@ export function NotificationBellDropdown({
                   key={n.id}
                   notification={n}
                   onRead={handleReadSingle}
+                  isActionPending={isPending}
                 />
               ))
             )}

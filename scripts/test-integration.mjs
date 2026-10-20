@@ -300,6 +300,71 @@ async function run() {
     tests.push({ name: "T13: Barangay-specific schedule resolution across distinct barangays", passed: false, detail: e.message });
   }
 
+  // T14: Notification read status tracking (read_at column & non-destructive mark read)
+  try {
+    const { data: colCheck, error: colErr } = await db
+      .from("notifications")
+      .select("id, user_id, read_at, created_at")
+      .limit(5);
+
+    const hasReadAtCol = !colErr && Array.isArray(colCheck);
+
+    // Verify non-destructive mark read behavior with a temporary test row
+    let nonDestructivePassed = false;
+    let newNotifUnreadPassed = false;
+    if (hasReadAtCol) {
+      const { data: dummyUser } = await db.from("users").select("id").limit(1).maybeSingle();
+      if (dummyUser) {
+        // Insert unread notification
+        const { data: testNotif, error: insErr } = await db
+          .from("notifications")
+          .insert({
+            user_id: dummyUser.id,
+            message: "INTEGRATION_TEST_NOTIFICATION",
+            type: "reminder",
+            status: "pending",
+            read_at: null,
+          })
+          .select()
+          .single();
+
+        if (testNotif && !insErr) {
+          newNotifUnreadPassed = testNotif.read_at === null;
+
+          // Update read_at
+          const nowIso = new Date().toISOString();
+          const { error: updErr } = await db
+            .from("notifications")
+            .update({ read_at: nowIso })
+            .eq("id", testNotif.id);
+
+          // Verify row still exists and has read_at
+          const { data: updatedNotif } = await db
+            .from("notifications")
+            .select("id, read_at")
+            .eq("id", testNotif.id)
+            .single();
+
+          nonDestructivePassed = !updErr && Boolean(updatedNotif?.read_at);
+
+          // Clean up test row
+          await db.from("notifications").delete().eq("id", testNotif.id);
+        }
+      }
+    }
+
+    const passed = hasReadAtCol && newNotifUnreadPassed && nonDestructivePassed;
+    tests.push({
+      name: "T14: Notification read status tracking & non-destructive mark read",
+      passed,
+      detail: passed
+        ? "read_at column verified; unread notifications have read_at=null; marking as read updates timestamp without deleting row."
+        : `Errors: colCheck=${colErr?.message ?? "ok"}, nonDestructive=${nonDestructivePassed}`,
+    });
+  } catch (e) {
+    tests.push({ name: "T14: Notification read status tracking & non-destructive mark read", passed: false, detail: e.message });
+  }
+
   console.log("\nResults:");
   let allPassed = true;
   for (const t of tests) {

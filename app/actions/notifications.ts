@@ -173,12 +173,9 @@ export async function getMyNotifications(): Promise<ResidentNotification[]> {
   const { userId } = await auth();
   if (!userId) return [];
 
-  const supabase = await createServerSupabaseClient();
+  const db = createAdminSupabaseClient();
 
-  // NOTE: read_at column was added in migration 20261003000000.
-  // We cast the select result to `any` to handle both pre- and post-migration
-  // schemas gracefully without breaking the build.
-  const { data, error } = await (supabase
+  const { data, error } = await (db
     .from("notifications")
     .select(
       `
@@ -186,6 +183,7 @@ export async function getMyNotifications(): Promise<ResidentNotification[]> {
       message,
       type,
       status,
+      read_at,
       created_at,
       pickup_id,
       pickup:pickups (
@@ -198,7 +196,10 @@ export async function getMyNotifications(): Promise<ResidentNotification[]> {
     .order("created_at", { ascending: false })
     .limit(20) as any);
 
-  if (error || !data) return [];
+  if (error || !data) {
+    if (error) console.error("[getMyNotifications] Error:", error);
+    return [];
+  }
 
   // Sort: unread first, then by created_at desc
   const rows = (data as any[]).sort((a, b) => {
@@ -231,12 +232,17 @@ export async function getUnreadCount(): Promise<number> {
   const { userId } = await auth();
   if (!userId) return 0;
 
-  const supabase = await createServerSupabaseClient();
-  const { count } = await (supabase
+  const db = createAdminSupabaseClient();
+  const { count, error } = await (db
     .from("notifications")
     .select("*", { count: "exact", head: true })
     .eq("user_id", userId)
     .is("read_at" as any, null) as any);
+
+  if (error) {
+    console.error("[getUnreadCount] Error:", error);
+    return 0;
+  }
 
   return count ?? 0;
 }
@@ -249,14 +255,17 @@ export async function markNotificationRead(
   const { userId } = await auth();
   if (!userId) return { success: false, error: "Not authenticated" };
 
-  const supabase = await createServerSupabaseClient();
-  const { error } = await supabase
+  const db = createAdminSupabaseClient();
+  const { error } = await (db
     .from("notifications")
     .update({ read_at: new Date().toISOString() } as any)
     .eq("id", notificationId)
-    .eq("user_id", userId); // belt-and-suspenders on top of RLS
+    .eq("user_id", userId) as any);
 
-  if (error) return { success: false, error: error.message };
+  if (error) {
+    console.error("[markNotificationRead] Error:", error);
+    return { success: false, error: error.message };
+  }
   revalidatePath("/dashboard");
   return { success: true };
 }
@@ -267,14 +276,17 @@ export async function markAllNotificationsRead(): Promise<ActionResult> {
   const { userId } = await auth();
   if (!userId) return { success: false, error: "Not authenticated" };
 
-  const supabase = await createServerSupabaseClient();
-  const { error } = await (supabase
+  const db = createAdminSupabaseClient();
+  const { error } = await (db
     .from("notifications")
     .update({ read_at: new Date().toISOString() } as any)
     .eq("user_id", userId)
     .is("read_at" as any, null) as any);
 
-  if (error) return { success: false, error: error.message };
+  if (error) {
+    console.error("[markAllNotificationsRead] Error:", error);
+    return { success: false, error: error.message };
+  }
   revalidatePath("/dashboard");
   return { success: true };
 }

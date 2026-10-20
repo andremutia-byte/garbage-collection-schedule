@@ -368,7 +368,7 @@ export function CollectionSchedule({
   return (
     <section
       id="collection-schedule-section"
-      className="rounded-3xl border border-slate-200 bg-white p-6 sm:p-8 mt-8 shadow-xs"
+      className="rounded-3xl border border-slate-200 bg-white p-6 sm:p-8 shadow-xs"
     >
       {/* ── Section Header & Address Clarity ── */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-slate-100">

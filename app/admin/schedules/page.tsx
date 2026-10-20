@@ -9,7 +9,12 @@ import { SchedulesClient } from "./SchedulesClient";
 
 export const metadata = { title: "Schedules — ButuanLinis Admin" };
 
-export default async function SchedulesPage() {
+export default async function SchedulesPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ tab?: string; action?: string }>;
+}) {
+  const resolved = searchParams ? await searchParams : {};
   const [schedules, categories, pickups, addresses, barangays] = await Promise.all([
     getAdminSchedules(),
     getAdminCategories(),
@@ -25,6 +30,8 @@ export default async function SchedulesPage() {
       pickups={pickups}
       addresses={addresses}
       barangays={barangays}
+      initialTab={resolved.tab === "pickups" ? "pickups" : "schedules"}
+      initialAction={resolved.action ?? null}
     />
   );
 }

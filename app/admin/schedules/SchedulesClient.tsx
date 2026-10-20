@@ -1,11 +1,13 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useMemo } from "react";
 import {
   Bell,
   CalendarClock,
+  ChevronRight,
   ListChecks,
   Loader2,
+  MapPin,
   Pencil,
   Plus,
   RefreshCw,
@@ -55,6 +57,8 @@ interface Props {
   pickups: AdminPickup[];
   addresses: AddressItem[];
   barangays: AdminBarangay[];
+  initialTab?: Tab;
+  initialAction?: string | null;
 }
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -362,9 +366,9 @@ function ScheduleForm({
               className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
             />
             <div className="text-xs">
-              <span className="font-semibold text-slate-800">Active Rule</span>
+              <span className="font-semibold text-slate-800">Active Schedule</span>
               <p className="text-slate-500">
-                Active rules appear on public schedules and generate recurring pickups for addresses. Deactivating pauses generation safely without deleting past records.
+                Active schedules appear on public calendars and generate recurring pickups for addresses. Deactivating pauses generation safely without deleting past records.
               </p>
             </div>
           </label>
@@ -407,7 +411,7 @@ function ToggleActiveButton({
         })
       }
       disabled={isPending}
-      title={isActive ? "Click to deactivate rule" : "Click to activate rule"}
+      title={isActive ? "Click to deactivate schedule" : "Click to activate schedule"}
       className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold border cursor-pointer transition ${
         isActive
           ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
@@ -451,7 +455,7 @@ function PickupForm({
     startTransition(async () => {
       const result = await createPickup(fd);
       if (result.success) {
-        onSuccess("Pickup event created.");
+        onSuccess("Pickup record added.");
         onClose();
       } else {
         setError(result.error ?? "Failed.");
@@ -500,7 +504,7 @@ function PickupForm({
         <Textarea name="notes" placeholder="Optional notes…" rows={2} />
       </Field>
       {error && <Alert type="error" message={error} />}
-      <SubmitButton loading={isPending} label="Create Pickup" onCancel={onClose} />
+      <SubmitButton loading={isPending} label="Add Pickup Record" onCancel={onClose} />
     </form>
   );
 }
@@ -578,27 +582,49 @@ function PickupStatusSelect({
   const [localStatus, setLocalStatus] = useState(current);
   const [isPending, startTransition] = useTransition();
 
+  const getStatusStyles = (status: string) => {
+    switch (status) {
+      case "completed":
+        return "bg-emerald-50 text-emerald-800 border-emerald-300 focus:ring-emerald-500";
+      case "scheduled":
+        return "bg-amber-50 text-amber-800 border-amber-300 focus:ring-amber-500";
+      case "missed":
+        return "bg-rose-50 text-rose-800 border-rose-300 focus:ring-rose-500";
+      case "skipped":
+        return "bg-slate-100 text-slate-800 border-slate-300 focus:ring-slate-400";
+      default:
+        return "bg-slate-50 text-slate-800 border-slate-200 focus:ring-emerald-500";
+    }
+  };
+
   return (
-    <select
-      value={localStatus}
-      disabled={isPending}
-      onChange={(e) => {
-        const val = e.target.value as "scheduled" | "completed" | "missed" | "skipped";
-        setLocalStatus(val); // optimistic update
-        startTransition(async () => {
-          const result = await updatePickupStatus(pickupId, val);
-          if (!result.success) {
-            setLocalStatus(current); // rollback on error
-            onResult(result.error ?? "Failed.", true);
-          }
-        });
-      }}
-      className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-    >
-      {STATUS_OPTIONS.map((s) => (
-        <option key={s} value={s}>{s}</option>
-      ))}
-    </select>
+    <div className="relative inline-flex items-center gap-1.5">
+      <select
+        value={localStatus}
+        disabled={isPending}
+        onChange={(e) => {
+          const val = e.target.value as "scheduled" | "completed" | "missed" | "skipped";
+          setLocalStatus(val); // optimistic update
+          startTransition(async () => {
+            const result = await updatePickupStatus(pickupId, val);
+            if (!result.success) {
+              setLocalStatus(current); // rollback on error
+              onResult(result.error ?? "Failed.", true);
+            }
+          });
+        }}
+        className={`rounded-lg border px-2.5 py-1 text-xs font-semibold capitalize transition-all cursor-pointer focus:outline-none focus:ring-2 ${getStatusStyles(
+          localStatus
+        )} ${isPending ? "opacity-60 pointer-events-none" : ""}`}
+      >
+        {STATUS_OPTIONS.map((s) => (
+          <option key={s} value={s} className="bg-white text-slate-800 font-medium capitalize">
+            {s.charAt(0).toUpperCase() + s.slice(1)}
+          </option>
+        ))}
+      </select>
+      {isPending && <Loader2 className="h-3 w-3 animate-spin text-slate-400" />}
+    </div>
   );
 }
 
@@ -606,16 +632,28 @@ function PickupStatusSelect({
 
 type Tab = "schedules" | "pickups";
 
-export function SchedulesClient({ schedules, categories, pickups, addresses, barangays }: Props) {
-  const [tab, setTab] = useState<Tab>("schedules");
-  const [showCreateSched, setShowCreateSched] = useState(false);
+export function SchedulesClient({
+  schedules,
+  categories,
+  pickups,
+  addresses,
+  barangays,
+  initialTab = "schedules",
+  initialAction = null,
+}: Props) {
+  const [tab, setTab] = useState<Tab>(initialTab);
+  const [showCreateSched, setShowCreateSched] = useState(initialAction === "new");
   const [showCreatePickup, setShowCreatePickup] = useState(false);
   const [editSched, setEditSched] = useState<AdminSchedule | null>(null);
   const [deleteSched, setDeleteSched] = useState<string | null>(null);
   const [deletePickupId, setDeletePickupId] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
+
+  // Pickup Filters
   const [pickupSearch, setPickupSearch] = useState("");
+  const [pickupStatusFilter, setPickupStatusFilter] = useState("all");
+  const [pickupCategoryFilter, setPickupCategoryFilter] = useState("all");
 
   // Schedule Filters
   const [scheduleSearch, setScheduleSearch] = useState("");
@@ -658,6 +696,15 @@ export function SchedulesClient({ schedules, categories, pickups, addresses, bar
   });
 
   const filteredPickups = pickups.filter((p) => {
+    // Status filter
+    if (pickupStatusFilter !== "all" && p.status !== pickupStatusFilter) {
+      return false;
+    }
+    // Category filter
+    if (pickupCategoryFilter !== "all" && p.waste_category.id !== pickupCategoryFilter) {
+      return false;
+    }
+    // Search query
     if (!pickupSearch.trim()) return true;
     const q = pickupSearch.toLowerCase();
     return (
@@ -668,6 +715,81 @@ export function SchedulesClient({ schedules, categories, pickups, addresses, bar
       p.status.toLowerCase().includes(q)
     );
   });
+
+  // Group filtered schedules by barangay
+  const groupedByBarangay = useMemo(() => {
+    const map = new Map<
+      string,
+      {
+        id: string;
+        name: string;
+        isCityWide: boolean;
+        schedules: AdminSchedule[];
+        activeCount: number;
+      }
+    >();
+
+    for (const s of filteredSchedules) {
+      const key = s.barangay_id ?? "citywide";
+      const name = s.barangay_id ? s.barangay_name : "City-wide (All Barangays)";
+      const isCityWide = !s.barangay_id;
+
+      if (!map.has(key)) {
+        map.set(key, {
+          id: key,
+          name,
+          isCityWide,
+          schedules: [],
+          activeCount: 0,
+        });
+      }
+      const group = map.get(key)!;
+      group.schedules.push(s);
+      if (s.is_active) {
+        group.activeCount += 1;
+      }
+    }
+
+    return Array.from(map.values()).sort((a, b) => {
+      if (a.isCityWide) return -1;
+      if (b.isCityWide) return 1;
+      return a.name.localeCompare(b.name);
+    });
+  }, [filteredSchedules]);
+
+  // Expand / collapse state for barangay groups
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
+
+  const isGroupExpanded = (key: string) => {
+    // If the admin enters a search query, expand matching groups automatically
+    if (scheduleSearch.trim().length > 0) {
+      return expandedGroups[key] !== false;
+    }
+    return !!expandedGroups[key];
+  };
+
+  const toggleGroup = (key: string) => {
+    setExpandedGroups((prev) => ({
+      ...prev,
+      [key]: !isGroupExpanded(key),
+    }));
+  };
+
+  const expandAll = () => {
+    const next: Record<string, boolean> = {};
+    for (const g of groupedByBarangay) {
+      next[g.id] = true;
+    }
+    setExpandedGroups(next);
+  };
+
+  const collapseAll = () => {
+    const next: Record<string, boolean> = {};
+    for (const g of groupedByBarangay) {
+      next[g.id] = false;
+    }
+    setExpandedGroups(next);
+  };
 
   const handleMsg = (msg: string, isError: boolean) => {
     if (isError) setErrorMsg(msg);
@@ -696,18 +818,24 @@ export function SchedulesClient({ schedules, categories, pickups, addresses, bar
     setScheduleStatusFilter("all");
   };
 
+  const clearPickupFilters = () => {
+    setPickupSearch("");
+    setPickupStatusFilter("all");
+    setPickupCategoryFilter("all");
+  };
+
   return (
     <div>
       <PageHeader
         title="Schedules & Pickups"
-        subtitle="Manage recurring collection rules and individual pickup events"
+        subtitle="Manage collection schedules and track garbage pickups."
         action={
           <button
             onClick={() => tab === "schedules" ? setShowCreateSched(true) : setShowCreatePickup(true)}
             className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 transition-colors cursor-pointer"
           >
             <Plus className="h-4 w-4" />
-            {tab === "schedules" ? "New Schedule" : "New Pickup"}
+            {tab === "schedules" ? "New Schedule" : "Add Pickup Record"}
           </button>
         }
       />
@@ -726,25 +854,29 @@ export function SchedulesClient({ schedules, categories, pickups, addresses, bar
             }`}
           >
             {t === "schedules" ? <CalendarClock className="h-4 w-4" /> : <ListChecks className="h-4 w-4" />}
-            {t === "schedules" ? `Rules (${schedules.length})` : `Events (${pickups.length})`}
+            {t === "schedules" ? `Collection Schedules (${schedules.length})` : `Pickup Records (${pickups.length})`}
           </button>
         ))}
       </div>
 
       {/* ─ Schedules Tab ─ */}
       {tab === "schedules" && (
-        <>
+        <div className="space-y-4">
+          <p className="text-xs sm:text-sm text-slate-500">
+            Manage recurring collection days, times, and waste categories.
+          </p>
+
           {schedules.length === 0 ? (
             <EmptyState
               icon={CalendarClock}
-              title="No schedule rules"
-              subtitle='Create a recurring rule, then use "Generate" to create pickup events for all active addresses.'
+              title="No collection schedules"
+              subtitle='Create a collection schedule, then use "Generate" to create pickup records for all active addresses.'
               action={
                 <button
                   onClick={() => setShowCreateSched(true)}
                   className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 transition-colors cursor-pointer"
                 >
-                  <Plus className="h-4 w-4" /> Create Rule
+                  <Plus className="h-4 w-4" /> Add Schedule
                 </button>
               }
             />
@@ -757,7 +889,7 @@ export function SchedulesClient({ schedules, categories, pickups, addresses, bar
                     <Search className="h-4 w-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                     <input
                       type="text"
-                      placeholder="Search schedules by barangay, category, day, time…"
+                      placeholder="Search barangay (e.g. Ampayon, Libertad), category, day…"
                       value={scheduleSearch}
                       onChange={(e) => setScheduleSearch(e.target.value)}
                       className="w-full rounded-xl border border-slate-200 bg-white pl-9 pr-3 py-2 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
@@ -766,7 +898,7 @@ export function SchedulesClient({ schedules, categories, pickups, addresses, bar
 
                   <div className="flex items-center gap-2 text-xs text-slate-500">
                     <span>
-                      Showing <strong className="text-slate-800">{filteredSchedules.length}</strong> of {schedules.length} rules
+                      Showing <strong className="text-slate-800">{filteredSchedules.length}</strong> of {schedules.length} schedules
                     </span>
                     {(scheduleSearch || scheduleBarangayFilter !== "all" || scheduleCategoryFilter !== "all" || scheduleDayFilter !== "all" || scheduleStatusFilter !== "all") && (
                       <button
@@ -869,135 +1001,385 @@ export function SchedulesClient({ schedules, categories, pickups, addresses, bar
                   </button>
                 </div>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead className="bg-slate-50 border-b border-slate-100">
-                      <tr>
-                        <th className="text-left px-4 py-3 font-medium text-slate-500">Scope / Barangay</th>
-                        <th className="text-left px-4 py-3 font-medium text-slate-500">Category</th>
-                        <th className="text-left px-4 py-3 font-medium text-slate-500">Frequency</th>
-                        <th className="text-left px-4 py-3 font-medium text-slate-500">Day & Time</th>
-                        <th className="text-left px-4 py-3 font-medium text-slate-500">Status</th>
-                        <th className="text-left px-4 py-3 font-medium text-slate-500">Period</th>
-                        <th className="text-right px-4 py-3 font-medium text-slate-500">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-50">
-                      {filteredSchedules.map((s) => (
-                        <tr key={s.id} className="hover:bg-slate-50/50">
-                          <td className="px-4 py-3">
-                            {s.barangay_id ? (
-                              <span className="inline-flex items-center gap-1 text-xs font-semibold rounded-full bg-slate-100 border border-slate-200 px-2.5 py-0.5 text-slate-700">
-                                {s.barangay_name}
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1 text-xs font-semibold rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 text-emerald-800">
-                                City-wide (All)
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3">
-                            <span
-                              className="inline-flex items-center gap-1.5 text-xs font-medium rounded-full px-2.5 py-0.5"
-                              style={{
-                                backgroundColor: s.category_color ? `${s.category_color}22` : "#f1f5f9",
-                                color: s.category_color ?? "#475569",
-                                border: `1px solid ${s.category_color ? `${s.category_color}44` : "#e2e8f0"}`,
-                              }}
-                            >
-                              {s.category_name}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-slate-600">{FREQ_LABELS[s.frequency] ?? s.frequency}</td>
-                          <td className="px-4 py-3">
-                            <p className="font-semibold text-slate-800">
-                              {s.day_of_week !== null ? DAYS[s.day_of_week] : "Any day"}
-                            </p>
-                            <p className="text-[11px] text-slate-500">{s.collection_time}</p>
-                          </td>
-                          <td className="px-4 py-3">
-                            <ToggleActiveButton
-                              scheduleId={s.id}
-                              isActive={s.is_active}
-                              onResult={handleMsg}
-                            />
-                          </td>
-                          <td className="px-4 py-3 text-slate-500 text-xs">
-                            {formatDate(s.start_date)}
-                            {s.end_date ? ` → ${formatDate(s.end_date)}` : " → ongoing"}
-                          </td>
-                          <td className="px-4 py-3">
-                            <div className="flex items-center justify-end gap-2">
-                              <GeneratePickupsButton
-                                scheduleId={s.id}
-                                onResult={handleMsg}
-                              />
-                              <NotifyButton
-                                onResult={handleMsg}
-                              />
-                              <button
-                                onClick={() => setEditSched(s)}
-                                className="rounded-lg p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
-                                title="Edit"
+                <>
+                  {/* Quick Toolbar: Barangay Group Summary & Expand/Collapse Controls */}
+                  <div className="px-4 py-2.5 bg-slate-100/70 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2 text-xs">
+                    <div className="flex items-center gap-2">
+                      <MapPin className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                      <span className="font-semibold text-slate-800">
+                        {groupedByBarangay.length} {groupedByBarangay.length === 1 ? "Barangay Group" : "Barangay Groups"}
+                      </span>
+                      <span className="text-slate-400">·</span>
+                      <span className="text-slate-500 font-medium">
+                        {filteredSchedules.length} collection {filteredSchedules.length === 1 ? "rule" : "rules"}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={expandAll}
+                        className="px-2.5 py-1 rounded-lg text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 transition cursor-pointer shadow-2xs"
+                      >
+                        Expand All
+                      </button>
+                      <button
+                        type="button"
+                        onClick={collapseAll}
+                        className="px-2.5 py-1 rounded-lg text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 transition cursor-pointer shadow-2xs"
+                      >
+                        Collapse All
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* ─── 2. Independent Vertical Scrollable Grouped Container (max-h-[500px]) ─── */}
+                  <div
+                    id="barangay-schedules-scroll-container"
+                    className="max-h-[500px] overflow-y-auto overflow-x-hidden custom-scrollbar divide-y divide-slate-100"
+                    style={{ overscrollBehaviorY: "contain" }}
+                  >
+                    {groupedByBarangay.map((group) => {
+                      const isExpanded = isGroupExpanded(group.id);
+                      return (
+                        <div key={group.id} className="bg-white">
+                          {/* Barangay Accordion Header */}
+                          <button
+                            type="button"
+                            onClick={() => toggleGroup(group.id)}
+                            aria-expanded={isExpanded}
+                            className="w-full flex items-center justify-between p-3.5 sm:p-4 text-left hover:bg-slate-50/80 transition-colors group cursor-pointer"
+                          >
+                            <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+                              <div
+                                className={`p-1 rounded-lg text-slate-400 group-hover:text-emerald-600 transition-all ${
+                                  isExpanded ? "rotate-90 text-emerald-600 bg-emerald-50" : ""
+                                }`}
                               >
-                                <Pencil className="h-3.5 w-3.5" />
-                              </button>
-                              <button
-                                onClick={() => setDeleteSched(s.id)}
-                                className="rounded-lg p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
-                                title="Delete"
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </button>
+                                <ChevronRight className="h-4 w-4 transition-transform duration-200" />
+                              </div>
+
+                              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100">
+                                <MapPin className="h-3.5 w-3.5" />
+                              </div>
+
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="font-bold text-xs sm:text-sm text-slate-900 group-hover:text-emerald-700 transition-colors">
+                                    {group.name}
+                                  </span>
+                                  {group.isCityWide && (
+                                    <span className="inline-flex items-center text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                                      City-wide
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
                             </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+
+                            <div className="flex items-center gap-2 shrink-0 ml-2">
+                              <span className="text-[11px] font-semibold text-slate-600 bg-slate-100 px-2.5 py-0.5 rounded-full border border-slate-200">
+                                {group.schedules.length} {group.schedules.length === 1 ? "schedule" : "schedules"}
+                              </span>
+                              <span
+                                className={`text-[10px] font-medium hidden sm:inline ${
+                                  group.activeCount > 0 ? "text-emerald-600 font-semibold" : "text-slate-400"
+                                }`}
+                              >
+                                {group.activeCount} active
+                              </span>
+                            </div>
+                          </button>
+
+                          {/* Barangay Schedules Content when Expanded */}
+                          {isExpanded && (
+                            <div className="bg-slate-50/70 border-t border-slate-100 p-2 sm:p-3">
+                              {/* Desktop Table View */}
+                              <div className="hidden md:block overflow-x-auto">
+                                <table className="w-full text-xs">
+                                  <thead>
+                                    <tr className="text-slate-500 font-semibold uppercase tracking-wider text-[10px] border-b border-slate-200/80">
+                                      <th className="text-left px-3 py-2">Waste Category</th>
+                                      <th className="text-left px-3 py-2">Day & Time</th>
+                                      <th className="text-left px-3 py-2">Frequency</th>
+                                      <th className="text-left px-3 py-2">Status</th>
+                                      <th className="text-left px-3 py-2">Period</th>
+                                      <th className="text-right px-3 py-2">Actions</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-slate-200/60">
+                                    {group.schedules.map((s) => (
+                                      <tr key={s.id} className="hover:bg-white/80 transition-colors">
+                                        {/* Waste Category */}
+                                        <td className="px-3 py-2.5 whitespace-nowrap">
+                                          <span
+                                            className="inline-flex items-center gap-1.5 text-xs font-semibold rounded-full px-2.5 py-0.5"
+                                            style={{
+                                              backgroundColor: s.category_color ? `${s.category_color}22` : "#f1f5f9",
+                                              color: s.category_color ?? "#475569",
+                                              border: `1px solid ${s.category_color ? `${s.category_color}44` : "#e2e8f0"}`,
+                                            }}
+                                          >
+                                            <span
+                                              className="h-2 w-2 rounded-full"
+                                              style={{ backgroundColor: s.category_color ?? "#64748b" }}
+                                            />
+                                            {s.category_name}
+                                          </span>
+                                        </td>
+
+                                        {/* Day & Time */}
+                                        <td className="px-3 py-2.5 whitespace-nowrap">
+                                          <p className="font-bold text-slate-800 text-xs">
+                                            {s.day_of_week !== null ? DAYS[s.day_of_week] : "Any day"}
+                                          </p>
+                                          <p className="text-[11px] text-slate-500">{s.collection_time}</p>
+                                        </td>
+
+                                        {/* Frequency */}
+                                        <td className="px-3 py-2.5 text-slate-600 whitespace-nowrap">
+                                          {FREQ_LABELS[s.frequency] ?? s.frequency}
+                                        </td>
+
+                                        {/* Status Toggle */}
+                                        <td className="px-3 py-2.5 whitespace-nowrap">
+                                          <ToggleActiveButton
+                                            scheduleId={s.id}
+                                            isActive={s.is_active}
+                                            onResult={handleMsg}
+                                          />
+                                        </td>
+
+                                        {/* Period */}
+                                        <td className="px-3 py-2.5 text-slate-500 text-[11px] whitespace-nowrap">
+                                          {formatDate(s.start_date)}
+                                          {s.end_date ? ` → ${formatDate(s.end_date)}` : " → ongoing"}
+                                        </td>
+
+                                        {/* Actions */}
+                                        <td className="px-3 py-2.5 whitespace-nowrap text-right">
+                                          <div className="flex items-center justify-end gap-1.5">
+                                            <GeneratePickupsButton
+                                              scheduleId={s.id}
+                                              onResult={handleMsg}
+                                            />
+                                            <NotifyButton
+                                              onResult={handleMsg}
+                                            />
+                                            <button
+                                              type="button"
+                                              onClick={() => setEditSched(s)}
+                                              className="rounded-lg p-1.5 text-slate-400 hover:text-slate-700 hover:bg-white transition-colors cursor-pointer border border-transparent hover:border-slate-200"
+                                              title="Edit Schedule"
+                                            >
+                                              <Pencil className="h-3.5 w-3.5" />
+                                            </button>
+                                            <button
+                                              type="button"
+                                              onClick={() => setDeleteSched(s.id)}
+                                              className="rounded-lg p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer border border-transparent hover:border-red-100"
+                                              title="Delete Schedule"
+                                            >
+                                              <Trash2 className="h-3.5 w-3.5" />
+                                            </button>
+                                          </div>
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+
+                              {/* Mobile Card View */}
+                              <div className="md:hidden space-y-2">
+                                {group.schedules.map((s) => (
+                                  <div
+                                    key={s.id}
+                                    className="bg-white rounded-xl border border-slate-200/80 p-3 space-y-2.5 shadow-2xs"
+                                  >
+                                    <div className="flex items-start justify-between gap-2">
+                                      <span
+                                        className="inline-flex items-center gap-1.5 text-xs font-semibold rounded-full px-2.5 py-0.5"
+                                        style={{
+                                          backgroundColor: s.category_color ? `${s.category_color}22` : "#f1f5f9",
+                                          color: s.category_color ?? "#475569",
+                                          border: `1px solid ${s.category_color ? `${s.category_color}44` : "#e2e8f0"}`,
+                                        }}
+                                      >
+                                        <span
+                                          className="h-2 w-2 rounded-full"
+                                          style={{ backgroundColor: s.category_color ?? "#64748b" }}
+                                        />
+                                        {s.category_name}
+                                      </span>
+                                      <ToggleActiveButton
+                                        scheduleId={s.id}
+                                        isActive={s.is_active}
+                                        onResult={handleMsg}
+                                      />
+                                    </div>
+
+                                    <div className="text-xs space-y-0.5 text-slate-600">
+                                      <p className="font-semibold text-slate-900">
+                                        {s.day_of_week !== null ? DAYS[s.day_of_week] : "Any day"} · {s.collection_time}
+                                      </p>
+                                      <p className="text-[11px] text-slate-500">
+                                        Frequency: {FREQ_LABELS[s.frequency] ?? s.frequency}
+                                      </p>
+                                      <p className="text-[11px] text-slate-400">
+                                        {formatDate(s.start_date)}{s.end_date ? ` → ${formatDate(s.end_date)}` : " (ongoing)"}
+                                      </p>
+                                    </div>
+
+                                    <div className="flex items-center justify-between pt-2 border-t border-slate-100 gap-1 flex-wrap">
+                                      <div className="flex items-center gap-1">
+                                        <GeneratePickupsButton scheduleId={s.id} onResult={handleMsg} />
+                                        <NotifyButton onResult={handleMsg} />
+                                      </div>
+                                      <div className="flex items-center gap-1 ml-auto">
+                                        <button
+                                          type="button"
+                                          onClick={() => setEditSched(s)}
+                                          className="p-1.5 text-slate-500 hover:text-slate-800 rounded-lg hover:bg-slate-100"
+                                          title="Edit"
+                                        >
+                                          <Pencil className="h-3.5 w-3.5" />
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => setDeleteSched(s.id)}
+                                          className="p-1.5 text-slate-500 hover:text-red-600 rounded-lg hover:bg-red-50"
+                                          title="Delete"
+                                        >
+                                          <Trash2 className="h-3.5 w-3.5" />
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Bottom Info Footer */}
+                  <div className="px-4 py-2.5 bg-slate-50/80 border-t border-slate-200/80 flex items-center justify-between text-[11px] text-slate-500 font-medium">
+                    <span>
+                      Showing {groupedByBarangay.length} barangay {groupedByBarangay.length === 1 ? "group" : "groups"} ({filteredSchedules.length} schedules total)
+                    </span>
+                    <span className="text-slate-400 hidden sm:inline">
+                      Scroll to browse all 86 barangays
+                    </span>
+                  </div>
+                </>
               )}
             </div>
           )}
-        </>
+        </div>
       )}
 
       {/* ─ Pickups Tab ─ */}
       {tab === "pickups" && (
-        <>
+        <div className="space-y-4">
+          <p className="text-xs sm:text-sm text-slate-500">
+            View individual garbage pickups and update their collection status.
+          </p>
+
           {pickups.length === 0 ? (
             <EmptyState
               icon={ListChecks}
-              title="No pickup events"
-              subtitle='Create a schedule rule above and click "Generate" to auto-create events, or add individual events manually.'
+              title="No pickup records"
+              subtitle='Create a collection schedule and click "Generate" to auto-create pickups, or add individual pickup records manually.'
               action={
                 <button
                   onClick={() => setShowCreatePickup(true)}
                   className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 transition-colors cursor-pointer"
                 >
-                  <Plus className="h-4 w-4" /> Add Pickup
+                  <Plus className="h-4 w-4" /> Add Pickup Record
                 </button>
               }
             />
           ) : (
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-              <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-                <div className="relative max-w-sm flex-1">
-                  <Search className="h-4 w-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="text"
-                    placeholder="Search pickups by address, category, date…"
-                    value={pickupSearch}
-                    onChange={(e) => setPickupSearch(e.target.value)}
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 pl-9 pr-4 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition"
-                  />
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+              {/* Comprehensive Filter Bar */}
+              <div className="p-4 bg-slate-50/70 border-b border-slate-200 space-y-3">
+                <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
+                  <div className="relative flex-1 max-w-md">
+                    <Search className="h-4 w-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      placeholder="Search pickups by address, category, date, or status…"
+                      value={pickupSearch}
+                      onChange={(e) => setPickupSearch(e.target.value)}
+                      className="w-full rounded-xl border border-slate-200 bg-white pl-9 pr-3 py-2 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-between lg:justify-end gap-3">
+                    <div className="flex items-center gap-2 text-xs text-slate-500">
+                      <span>
+                        Showing <strong className="text-slate-800">{filteredPickups.length}</strong> of {pickups.length} pickups
+                      </span>
+                      {(pickupSearch || pickupStatusFilter !== "all" || pickupCategoryFilter !== "all") && (
+                        <button
+                          type="button"
+                          onClick={clearPickupFilters}
+                          className="text-emerald-700 font-semibold hover:underline cursor-pointer ml-1"
+                        >
+                          Reset filters
+                        </button>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => setShowCreatePickup(true)}
+                      className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-emerald-700 transition cursor-pointer"
+                    >
+                      <Plus className="h-3.5 w-3.5" /> Add Pickup Record
+                    </button>
+                  </div>
                 </div>
-                <button
-                  onClick={() => setShowCreatePickup(true)}
-                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-xs hover:bg-emerald-700 transition cursor-pointer"
-                >
-                  <Plus className="h-4 w-4" /> Add Pickup
-                </button>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                  {/* Filter by Status */}
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-500 mb-1">
+                      Status
+                    </label>
+                    <select
+                      value={pickupStatusFilter}
+                      onChange={(e) => setPickupStatusFilter(e.target.value)}
+                      className="w-full rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+                    >
+                      <option value="all">All Statuses</option>
+                      <option value="scheduled">Scheduled</option>
+                      <option value="completed">Completed</option>
+                      <option value="missed">Missed</option>
+                      <option value="skipped">Skipped</option>
+                    </select>
+                  </div>
+
+                  {/* Filter by Waste Category */}
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-500 mb-1">
+                      Waste Category
+                    </label>
+                    <select
+                      value={pickupCategoryFilter}
+                      onChange={(e) => setPickupCategoryFilter(e.target.value)}
+                      className="w-full rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+                    >
+                      <option value="all">All Categories</option>
+                      {categories.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
               </div>
 
               {filteredPickups.length === 0 ? (
@@ -1005,107 +1387,116 @@ export function SchedulesClient({ schedules, categories, pickups, addresses, bar
                   <EmptyState
                     icon={ListChecks}
                     title="No matching pickups"
-                    subtitle={`No pickups match "${pickupSearch}".`}
+                    subtitle={
+                      pickupSearch || pickupStatusFilter !== "all" || pickupCategoryFilter !== "all"
+                        ? "No pickup records match the current filters."
+                        : "No pickup events recorded."
+                    }
                     action={
-                      <button
-                        onClick={() => setPickupSearch("")}
-                        className="inline-flex items-center rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition cursor-pointer"
-                      >
-                        Clear search
-                      </button>
+                      pickupSearch || pickupStatusFilter !== "all" || pickupCategoryFilter !== "all" ? (
+                        <button
+                          onClick={clearPickupFilters}
+                          className="inline-flex items-center rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition cursor-pointer"
+                        >
+                          Reset filters
+                        </button>
+                      ) : undefined
                     }
                   />
                 </div>
               ) : (
-                <div className="overflow-x-auto">
+                <div className="max-h-[500px] overflow-y-auto subtle-scrollbar">
                   <table className="w-full text-sm">
-                    <thead className="bg-slate-50 border-b border-slate-100">
+                    <thead className="bg-slate-50/90 sticky top-0 z-10 border-b border-slate-200 backdrop-blur-xs">
                       <tr>
-                        <th className="text-left px-4 py-3 font-medium text-slate-500">Date</th>
-                        <th className="text-left px-4 py-3 font-medium text-slate-500">Address</th>
-                        <th className="text-left px-4 py-3 font-medium text-slate-500">Category</th>
-                        <th className="text-left px-4 py-3 font-medium text-slate-500">Status</th>
-                        <th className="text-right px-4 py-3 font-medium text-slate-500">Actions</th>
+                        <th className="text-left px-4 py-3 font-semibold text-slate-600 text-xs uppercase tracking-wider">Date</th>
+                        <th className="text-left px-4 py-3 font-semibold text-slate-600 text-xs uppercase tracking-wider">Address</th>
+                        <th className="text-left px-4 py-3 font-semibold text-slate-600 text-xs uppercase tracking-wider">Category</th>
+                        <th className="text-left px-4 py-3 font-semibold text-slate-600 text-xs uppercase tracking-wider">Status</th>
+                        <th className="text-right px-4 py-3 font-semibold text-slate-600 text-xs uppercase tracking-wider">Actions</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-50">
+                    <tbody className="divide-y divide-slate-100">
                       {filteredPickups.map((p) => (
-                      <tr key={p.id} className="hover:bg-slate-50/50">
-                        <td className="px-4 py-3 font-medium text-slate-900 whitespace-nowrap">
-                          {formatDate(p.scheduled_date)}
-                        </td>
-                        <td className="px-4 py-3">
-                          <p className="text-slate-800">{p.address.street}</p>
-                          <p className="text-xs text-slate-500">{p.address.city} {p.address.postal_code}</p>
-                        </td>
-                        <td className="px-4 py-3">
-                          <span
-                            className="inline-flex items-center text-xs font-medium rounded-full px-2.5 py-0.5"
-                            style={{
-                              backgroundColor: p.waste_category.color_code ? `${p.waste_category.color_code}22` : "#f1f5f9",
-                              color: p.waste_category.color_code ?? "#475569",
-                              border: `1px solid ${p.waste_category.color_code ? `${p.waste_category.color_code}44` : "#e2e8f0"}`,
-                            }}
-                          >
-                            {p.waste_category.name}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3">
-                          <PickupStatusSelect
-                            pickupId={p.id}
-                            current={p.status}
-                            onResult={handleMsg}
-                          />
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          <button
-                            onClick={() => setDeletePickupId(p.id)}
-                            className="rounded-lg p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
-                            title="Remove"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-            {pickups.length >= 100 && (
-              <div className="px-4 py-3 text-xs text-center text-slate-400 border-t border-slate-100">
-                Showing first 100 events. Use search or filter to narrow down.
-              </div>
-            )}
-          </div>
-        )}
-      </>
-    )}
+                        <tr key={p.id} className="hover:bg-slate-50/70 transition-colors">
+                          <td className="px-4 py-3 font-medium text-slate-900 whitespace-nowrap">
+                            <div className="flex items-center gap-1.5">
+                              <CalendarClock className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                              <span>{formatDate(p.scheduled_date)}</span>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3">
+                            <p className="text-slate-800 font-medium">{p.address.street}</p>
+                            <p className="text-xs text-slate-500">{p.address.city} {p.address.postal_code}</p>
+                          </td>
+                          <td className="px-4 py-3">
+                            <span
+                              className="inline-flex items-center text-xs font-medium rounded-full px-2.5 py-0.5"
+                              style={{
+                                backgroundColor: p.waste_category.color_code ? `${p.waste_category.color_code}22` : "#f1f5f9",
+                                color: p.waste_category.color_code ?? "#475569",
+                                border: `1px solid ${p.waste_category.color_code ? `${p.waste_category.color_code}44` : "#e2e8f0"}`,
+                              }}
+                            >
+                              {p.waste_category.name}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <PickupStatusSelect
+                              pickupId={p.id}
+                              current={p.status}
+                              onResult={handleMsg}
+                            />
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <button
+                              onClick={() => setDeletePickupId(p.id)}
+                              className="rounded-lg p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+                              title="Remove"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              {pickups.length >= 100 && (
+                <div className="px-4 py-3 text-xs text-center text-slate-400 border-t border-slate-100 bg-slate-50">
+                  Showing first 100 records. Use search or filters above to narrow down.
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Modals */}
       {showCreateSched && (
-        <Modal title="New Schedule Rule" subtitle="Define a recurring collection rule for the municipality" onClose={() => setShowCreateSched(false)} wide>
+        <Modal title="New Schedule" subtitle="Define a recurring collection schedule for the municipality" onClose={() => setShowCreateSched(false)} wide>
           <ScheduleForm categories={categories} barangays={barangays} onClose={() => setShowCreateSched(false)} onSuccess={(m) => setSuccessMsg(m)} />
         </Modal>
       )}
 
       {editSched && (
-        <Modal title="Edit Schedule Rule" subtitle={editSched.category_name} onClose={() => setEditSched(null)} wide>
+        <Modal title="Edit Schedule" subtitle={editSched.category_name} onClose={() => setEditSched(null)} wide>
           <ScheduleForm initial={editSched} categories={categories} barangays={barangays} onClose={() => setEditSched(null)} onSuccess={(m) => setSuccessMsg(m)} />
         </Modal>
       )}
 
       {showCreatePickup && (
-        <Modal title="Add Pickup Event" subtitle="Create a single pickup event for an address" onClose={() => setShowCreatePickup(false)} wide>
+        <Modal title="Add Pickup Record" subtitle="Create a single pickup record for an address" onClose={() => setShowCreatePickup(false)} wide>
           <PickupForm addresses={addresses} categories={categories} onClose={() => setShowCreatePickup(false)} onSuccess={(m) => setSuccessMsg(m)} />
         </Modal>
       )}
 
       {deleteSched && (
         <ConfirmDialog
-          title="Delete Schedule Rule"
-          message="This will soft-delete the recurring rule. Already-generated pickup events are not affected."
-          confirmLabel="Delete Rule"
+          title="Delete Schedule"
+          message="This will soft-delete the recurring schedule. Already-generated pickup records are not affected."
+          confirmLabel="Delete Schedule"
           onConfirm={() => handleDeleteSched(deleteSched)}
           onCancel={() => setDeleteSched(null)}
         />
@@ -1113,9 +1504,9 @@ export function SchedulesClient({ schedules, categories, pickups, addresses, bar
 
       {deletePickupId && (
         <ConfirmDialog
-          title="Remove Pickup Event"
-          message="This pickup will be removed from the resident's schedule. This cannot be undone easily."
-          confirmLabel="Remove Pickup"
+          title="Remove Pickup Record"
+          message="This pickup record will be removed from the resident's schedule. This cannot be undone easily."
+          confirmLabel="Remove Pickup Record"
           onConfirm={() => handleDeletePickup(deletePickupId)}
           onCancel={() => setDeletePickupId(null)}
         />
