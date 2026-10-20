@@ -1,10 +1,15 @@
-import { UserButton } from "@clerk/nextjs";
+import { SafeUserButton } from "@/components/SafeUserButton";
 import Link from "next/link";
 import { Recycle, Shield } from "lucide-react";
 import { getAdminAuth } from "@/lib/admin-auth";
+import { getMyNotifications } from "@/app/actions/notifications";
+import { NotificationBellDropdown } from "./NotificationBellDropdown";
 
 export default async function DashboardLayout({ children }: LayoutProps<"/dashboard">) {
-  const { isAdmin } = await getAdminAuth();
+  const [{ isAdmin }, notifications] = await Promise.all([
+    getAdminAuth(),
+    getMyNotifications(),
+  ]);
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -25,7 +30,7 @@ export default async function DashboardLayout({ children }: LayoutProps<"/dashbo
             </div>
           </Link>
 
-          <nav className="flex items-center gap-4 sm:gap-6">
+          <nav className="flex items-center gap-3 sm:gap-4">
             <Link
               href="/dashboard"
               className="text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors"
@@ -41,7 +46,8 @@ export default async function DashboardLayout({ children }: LayoutProps<"/dashbo
                 Admin Panel
               </Link>
             )}
-            <UserButton />
+            <NotificationBellDropdown initialNotifications={notifications} />
+            <SafeUserButton />
           </nav>
         </div>
       </header>

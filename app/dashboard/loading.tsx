@@ -15,8 +15,22 @@ export default function DashboardLoading() {
         </div>
       </div>
 
-      {/* Hero Banner Skeleton */}
-      <div className="rounded-2xl bg-slate-200 h-28 w-full" />
+      {/* Hero Next Collection Skeleton */}
+      <div className="rounded-2xl sm:rounded-3xl border border-slate-200 bg-white p-6 sm:p-8 md:p-9 shadow-xs space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="h-6 w-44 rounded-full bg-slate-200" />
+          <div className="h-6 w-24 rounded-full bg-slate-100" />
+        </div>
+        <div className="space-y-2">
+          <div className="h-4 w-36 rounded bg-slate-100" />
+          <div className="h-10 sm:h-12 w-3/4 max-w-lg rounded-xl bg-slate-200" />
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-4 border-t border-slate-100">
+          <div className="h-20 rounded-2xl bg-slate-50 border border-slate-100" />
+          <div className="h-20 rounded-2xl bg-slate-50 border border-slate-100" />
+          <div className="h-20 rounded-2xl bg-slate-50 border border-slate-100 sm:col-span-2 lg:col-span-1" />
+        </div>
+      </div>
 
       {/* Grid Content Skeleton */}
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">

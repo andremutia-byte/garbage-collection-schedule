@@ -11,7 +11,7 @@ export const metadata = {
 
 export default async function DashboardPage() {
   const { userId } = await auth();
-  if (!userId) redirect("/sign-in");
+  if (!userId) redirect("/sign-in?redirect_url=/dashboard");
 
   // Fetch in parallel — notifications are independent of dashboard data
   const [data, notifications] = await Promise.all([
@@ -19,7 +19,7 @@ export default async function DashboardPage() {
     getMyNotifications(),
   ]);
 
-  if (!data) redirect("/sign-in");
+  if (!data) redirect("/sign-in?redirect_url=/dashboard");
 
   return <DashboardClient data={data} notifications={notifications} />;
 }

@@ -15,6 +15,8 @@ export interface ScheduleItem {
   end_date: string | null;
   barangay_id: string | null;
   barangay_name: string;
+  collection_time: string;
+  is_active: boolean;
   category: {
     id: string;
     name: string;
@@ -75,13 +77,16 @@ export async function getSchedulesByBarangay(
       start_date,
       end_date,
       barangay_id,
+      collection_time,
+      is_active,
       waste_categories ( id, name, color_code, instructions ),
       barangays ( id, name )
     `)
-    .is("deleted_at", null);
+    .is("deleted_at", null)
+    .eq("is_active", true);
 
   if (targetBarangay) {
-    query = query.or(`barangay_id.eq.${targetBarangay.id},barangay_id.is.null`);
+    query = query.eq("barangay_id", targetBarangay.id);
   } else {
     // If no barangay specified, return city-wide rules
     query = query.is("barangay_id", null);
@@ -113,6 +118,8 @@ export async function getSchedulesByBarangay(
       end_date: s.end_date,
       barangay_id: s.barangay_id,
       barangay_name: bar?.name ?? "All Barangays",
+      collection_time: s.collection_time || "06:00 AM – 09:00 AM",
+      is_active: s.is_active ?? true,
       category: {
         id: cat?.id ?? "",
         name: cat?.name ?? "General Waste",

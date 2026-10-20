@@ -1,10 +1,13 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useMemo } from "react";
+import Link from "next/link";
 import {
   Bell,
   CalendarDays,
   CheckCircle2,
+  ChevronDown,
+  Clock,
   Home,
   Loader2,
   MapPin,
@@ -15,12 +18,14 @@ import {
   AlertCircle,
   Leaf,
   Phone,
+  ArrowRight,
 } from "lucide-react";
 import type {
   DashboardData,
   AddressItem,
   UpcomingPickup,
 } from "@/app/actions/dashboard";
+import type { BarangayItem } from "@/app/actions/barangays";
 import {
   addAddress,
   removeAddress,
@@ -29,12 +34,11 @@ import {
 } from "@/app/actions/dashboard";
 import { validatePhilippinePhone } from "@/lib/phone";
 import type { ResidentNotification } from "@/app/actions/notifications";
-import { NotificationsPanel } from "./NotificationsPanel";
 import { CollectionSchedule } from "./CollectionSchedule";
 
 interface DashboardClientProps {
   data: DashboardData;
-  notifications: ResidentNotification[];
+  notifications?: ResidentNotification[];
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -50,6 +54,16 @@ function formatDate(iso: string) {
   return `${DAYS[d.getDay()]}, ${MONTHS[d.getMonth()]} ${d.getDate()}`;
 }
 
+function formatLongDate(iso: string) {
+  const d = new Date(iso + "T00:00:00");
+  return d.toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
 function daysUntil(iso: string) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -57,10 +71,57 @@ function daysUntil(iso: string) {
   const diff = Math.round((target.getTime() - today.getTime()) / 86400000);
   if (diff === 0) return "Today";
   if (diff === 1) return "Tomorrow";
+  if (diff < 0) return "Past";
   return `In ${diff} days`;
 }
 
-function getCategoryStyle(name: string, colorCode: string | null) {
+function getCategoryDetails(name: string) {
+  const n = name.toLowerCase();
+  if (n.includes("recycl")) {
+    return {
+      bg: "bg-blue-50/70",
+      border: "border-blue-200",
+      text: "text-blue-800",
+      badgeBg: "bg-blue-100 text-blue-800 border-blue-200",
+      iconBg: "bg-blue-600 text-white",
+      icon: <Recycle className="h-6 w-6" />,
+      guideline: "Clean plastics, paper, cardboard, bottles, and metals.",
+    };
+  }
+  if (n.includes("green") || n.includes("biodegrad") || n.includes("organic") || n.includes("leaf")) {
+    return {
+      bg: "bg-emerald-50/70",
+      border: "border-emerald-200",
+      text: "text-emerald-800",
+      badgeBg: "bg-emerald-100 text-emerald-800 border-emerald-200",
+      iconBg: "bg-emerald-600 text-white",
+      icon: <Leaf className="h-6 w-6" />,
+      guideline: "Food scraps, fruit peels, garden trimmings, and leaves.",
+    };
+  }
+  if (n.includes("hazard")) {
+    return {
+      bg: "bg-amber-50/70",
+      border: "border-amber-200",
+      text: "text-amber-800",
+      badgeBg: "bg-amber-100 text-amber-800 border-amber-200",
+      iconBg: "bg-amber-600 text-white",
+      icon: <AlertCircle className="h-6 w-6" />,
+      guideline: "Batteries, electronics, chemicals, paints, and medical waste.",
+    };
+  }
+  return {
+    bg: "bg-slate-50",
+    border: "border-slate-200",
+    text: "text-slate-800",
+    badgeBg: "bg-slate-100 text-slate-800 border-slate-200",
+    iconBg: "bg-slate-700 text-white",
+    icon: <Trash2 className="h-6 w-6" />,
+    guideline: "Non-recyclable household residual waste in tied trash bags.",
+  };
+}
+
+function getCategoryStyle(name: string) {
   const n = name.toLowerCase();
   if (n.includes("recycl")) return { bg: "bg-blue-50", border: "border-blue-200", text: "text-blue-700", icon: <Recycle className="h-5 w-5" /> };
   if (n.includes("green") || n.includes("garden") || n.includes("organic") || n.includes("leaf")) return { bg: "bg-emerald-50", border: "border-emerald-200", text: "text-emerald-700", icon: <Leaf className="h-5 w-5" /> };
@@ -77,9 +138,11 @@ const NOTIF_OPTIONS = [
 // ─── Add Address Modal ─────────────────────────────────────────────────────────
 
 function AddAddressModal({
+  availableBarangays,
   onClose,
   onSuccess,
 }: {
+  availableBarangays: BarangayItem[];
   onClose: () => void;
   onSuccess: () => void;
 }) {
@@ -107,8 +170,8 @@ function AddAddressModal({
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-slate-100">
           <div>
-            <h2 className="text-lg font-semibold text-slate-900">Add Address</h2>
-            <p className="text-sm text-slate-500 mt-0.5">Register a new collection address</p>
+            <h2 className="text-lg font-semibold text-slate-900">Add Household Address</h2>
+            <p className="text-sm text-slate-500 mt-0.5">Register your Butuan City address for collection schedules</p>
           </div>
           <button
             onClick={onClose}
@@ -120,29 +183,53 @@ function AddAddressModal({
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {/* Barangay Selector */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5" htmlFor="addr-barangay">
+              Barangay <span className="text-red-500">*</span>
+            </label>
+            <select
+              id="addr-barangay"
+              name="barangay_id"
+              required
+              defaultValue=""
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition cursor-pointer"
+            >
+              <option value="">Select your barangay ({availableBarangays.length} available)…</option>
+              {availableBarangays.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.name}
+                </option>
+              ))}
+            </select>
+            <p className="text-[11px] text-slate-500 mt-1">
+              Your collection schedules and pickup reminders are strictly configured for your barangay.
+            </p>
+          </div>
+
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1.5" htmlFor="addr-street">
-              Street Address <span className="text-red-500">*</span>
+              Street / Purok / Subdivision <span className="text-red-500">*</span>
             </label>
             <input
               id="addr-street"
               name="street"
               type="text"
               required
-              placeholder="123 Main St"
+              placeholder="e.g. Purok 3, Montilla Blvd, or Villa Kananga Rd"
               className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition"
             />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1.5" htmlFor="addr-unit">
-              Unit / Apt <span className="text-slate-400 font-normal">(optional)</span>
+              House / Unit / Block & Lot <span className="text-slate-400 font-normal">(optional)</span>
             </label>
             <input
               id="addr-unit"
               name="unit"
               type="text"
-              placeholder="Apt 4B"
+              placeholder="e.g. Block 4 Lot 12 or Apt 2"
               className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition"
             />
           </div>
@@ -248,7 +335,10 @@ function AddressCard({
           <p className="font-semibold text-slate-900 truncate text-sm sm:text-base">
             {address.street}{address.unit ? `, ${address.unit}` : ""}
           </p>
-          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">{address.city} {address.postal_code}</p>
+          <p className="text-xs sm:text-sm text-slate-600 mt-0.5 font-medium">
+            {address.barangay_name ? `Barangay ${address.barangay_name}, ` : ""}
+            {address.city} {address.postal_code}
+          </p>
         </div>
       </div>
 
@@ -267,39 +357,207 @@ function AddressCard({
   );
 }
 
-// ─── Pickup Card ───────────────────────────────────────────────────────────────
+// ─── Grouped Upcoming Pickups ──────────────────────────────────────────────────
 
-function PickupCard({ pickup }: { pickup: UpcomingPickup }) {
-  const style = getCategoryStyle(pickup.waste_category.name, pickup.waste_category.color_code);
+export type PickupCategoryGroup = "General Waste" | "Recyclables" | "Green Garden Waste";
+
+export function getPickupCategoryGroup(categoryName: string): PickupCategoryGroup {
+  const name = (categoryName || "").toLowerCase();
+  if (name.includes("recycl")) {
+    return "Recyclables";
+  }
+  if (
+    name.includes("green") ||
+    name.includes("garden") ||
+    name.includes("bio") ||
+    name.includes("organic") ||
+    name.includes("leaf")
+  ) {
+    return "Green Garden Waste";
+  }
+  return "General Waste";
+}
+
+interface CategoryGroupMeta {
+  id: PickupCategoryGroup;
+  title: string;
+  icon: typeof Trash2;
+  description: string;
+  iconClass: string;
+  badgeClass: string;
+  accentClass: string;
+}
+
+const CATEGORY_GROUPS_CONFIG: CategoryGroupMeta[] = [
+  {
+    id: "General Waste",
+    title: "General Waste",
+    icon: Trash2,
+    description: "Residual, non-recyclable household waste",
+    iconClass: "bg-slate-100 text-slate-700 border-slate-200",
+    badgeClass: "bg-slate-100 text-slate-700 border-slate-200",
+    accentClass: "border-slate-200",
+  },
+  {
+    id: "Recyclables",
+    title: "Recyclables",
+    icon: Recycle,
+    description: "Plastics, paper, clean cardboard, glass & metals",
+    iconClass: "bg-blue-50 text-blue-600 border-blue-200",
+    badgeClass: "bg-blue-50 text-blue-700 border-blue-200",
+    accentClass: "border-blue-100",
+  },
+  {
+    id: "Green Garden Waste",
+    title: "Green Garden Waste",
+    icon: Leaf,
+    description: "Garden cuttings, leaves & compostable organics",
+    iconClass: "bg-emerald-50 text-emerald-700 border-emerald-200",
+    badgeClass: "bg-emerald-50 text-emerald-800 border-emerald-200",
+    accentClass: "border-emerald-100",
+  },
+];
+
+function GroupedPickupCard({ pickup }: { pickup: UpcomingPickup }) {
   const urgency = daysUntil(pickup.scheduled_date);
   const isUrgent = urgency === "Today" || urgency === "Tomorrow";
 
   return (
-    <div className={`flex items-center gap-4 rounded-2xl border p-4 shadow-2xs transition-all hover:shadow-xs ${style.bg} ${style.border}`}>
-      <div className={`flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl ${style.bg} ${style.text} border ${style.border}`}>
-        {style.icon}
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2 flex-wrap">
-          <p className={`font-semibold text-sm ${style.text}`}>{pickup.waste_category.name}</p>
-          {isUrgent && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 border border-amber-200 px-2 py-0.5 text-xs font-semibold text-amber-700">
-              <Bell className="h-3 w-3" /> {urgency}
+    <div className="rounded-xl border border-slate-200 bg-white p-3.5 sm:p-4 shadow-2xs hover:shadow-xs transition-shadow">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        {/* Date, Status, and Collection Time */}
+        <div className="space-y-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-sm sm:text-base font-bold text-slate-900 flex items-center gap-1.5">
+              <CalendarDays className="h-4 w-4 text-emerald-600 shrink-0" />
+              {formatDate(pickup.scheduled_date)}
             </span>
+
+            {isUrgent ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 border border-amber-200 px-2 py-0.5 text-[11px] font-bold text-amber-800 shrink-0">
+                <Bell className="h-3 w-3" /> {urgency}
+              </span>
+            ) : (
+              <span className="inline-flex items-center rounded-full bg-slate-100 border border-slate-200 px-2 py-0.5 text-[11px] font-semibold text-slate-600 shrink-0">
+                {urgency}
+              </span>
+            )}
+
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[11px] font-semibold text-emerald-800 capitalize shrink-0">
+              <CheckCircle2 className="h-3 w-3 text-emerald-600" />
+              {pickup.status}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-1.5 text-xs text-slate-600 font-medium">
+            <Clock className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+            <span>{pickup.collection_time || "06:00 AM – 09:00 AM"}</span>
+          </div>
+        </div>
+
+        {/* Address */}
+        <div className="text-xs text-slate-500 sm:text-right flex sm:flex-col items-start sm:items-end gap-1 sm:gap-0.5 pt-2 sm:pt-0 border-t sm:border-0 border-slate-100">
+          <div className="flex items-center gap-1 text-slate-700 font-medium">
+            <MapPin className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+            <span className="truncate max-w-[280px]">
+              {pickup.address.street}
+              {pickup.address.unit ? `, ${pickup.address.unit}` : ""}
+            </span>
+          </div>
+          <span className="text-slate-400 text-[11px]">
+            {pickup.address.barangay_name
+              ? `Brgy. ${pickup.address.barangay_name}, ${pickup.address.city}`
+              : pickup.address.city}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CollapsiblePickupGroup({
+  meta,
+  pickups,
+  isOpen,
+  onToggle,
+}: {
+  meta: CategoryGroupMeta;
+  pickups: UpcomingPickup[];
+  isOpen: boolean;
+  onToggle: () => void;
+}) {
+  const Icon = meta.icon;
+  const count = pickups.length;
+
+  return (
+    <div className={`flex flex-col rounded-2xl border ${meta.accentClass} bg-white shadow-2xs overflow-hidden transition-all w-full`}>
+      {/* Category Header Button — Always visible while scrolling inside this category */}
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={isOpen}
+        aria-controls={`group-content-${meta.id.replace(/\s+/g, "-").toLowerCase()}`}
+        className="w-full flex items-center justify-between p-4 sm:p-5 text-left transition-colors hover:bg-slate-50/80 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-inset cursor-pointer select-none"
+      >
+        <div className="flex items-center gap-3 sm:gap-3.5 min-w-0">
+          <div
+            className={`flex h-10 w-10 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-xl border ${meta.iconClass}`}
+          >
+            <Icon className="h-5 w-5" />
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="font-bold text-slate-900 text-sm sm:text-base tracking-tight">
+                {meta.title}
+              </h3>
+              <span
+                className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] sm:text-xs font-semibold ${meta.badgeClass}`}
+              >
+                {count} {count === 1 ? "pickup" : "pickups"}
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 hidden sm:block truncate mt-0.5">
+              {meta.description}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 pl-3 shrink-0">
+          <span className="hidden sm:inline-block text-xs font-semibold text-slate-500">
+            {isOpen ? "Collapse" : "Expand"}
+          </span>
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-600 transition-colors">
+            <ChevronDown
+              className={`h-4 w-4 transition-transform duration-200 ${
+                isOpen ? "rotate-180" : ""
+              }`}
+            />
+          </div>
+        </div>
+      </button>
+
+      {/* Category Pickup List with Independent Vertical Scrollbar */}
+      {isOpen && (
+        <div
+          id={`group-content-${meta.id.replace(/\s+/g, "-").toLowerCase()}`}
+          className="border-t border-slate-100 bg-slate-50/50 p-3 sm:p-4 space-y-2.5 max-h-[300px] sm:max-h-[340px] overflow-y-auto overflow-x-hidden custom-scrollbar pr-2"
+          style={{ overscrollBehaviorY: "contain" }}
+        >
+          {pickups.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-6 px-4 text-center rounded-xl border border-dashed border-slate-200 bg-white/70">
+              <p className="font-semibold text-slate-700 text-xs sm:text-sm">
+                No upcoming pickups
+              </p>
+              <p className="text-xs text-slate-400 mt-0.5 max-w-xs">
+                No {meta.title.toLowerCase()} pickups scheduled in the next 30 days for your address.
+              </p>
+            </div>
+          ) : (
+            pickups.map((pickup) => (
+              <GroupedPickupCard key={pickup.id} pickup={pickup} />
+            ))
           )}
         </div>
-        <p className="text-sm font-medium text-slate-700 mt-0.5">
-          <CalendarDays className="inline h-3.5 w-3.5 mr-1.5 -mt-0.5 text-slate-400" />
-          {formatDate(pickup.scheduled_date)}
-        </p>
-        <p className="text-xs text-slate-500 mt-0.5 truncate">
-          {pickup.address.street}{pickup.address.unit ? `, ${pickup.address.unit}` : ""}, {pickup.address.city}
-        </p>
-      </div>
-      {!isUrgent && (
-        <span className="flex-shrink-0 text-xs font-medium text-slate-500 bg-white border border-slate-200/80 rounded-full px-2.5 py-1">
-          {urgency}
-        </span>
       )}
     </div>
   );
@@ -314,14 +572,16 @@ function NotificationSettings({ current }: { current: string }) {
 
   const handleSave = () => {
     startTransition(async () => {
-      await updateNotificationPref(selected as any);
+      await updateNotificationPref(
+        selected as "email" | "sms" | "push" | "none"
+      );
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     });
   };
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-2xs">
+    <div id="alert-options" className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-2xs scroll-mt-24">
       <div className="flex items-center gap-3 mb-4 sm:mb-5">
         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-600 border border-amber-200/80">
           <Bell className="h-5 w-5" />
@@ -508,6 +768,8 @@ function EmptyPickups() {
   );
 }
 
+
+
 // ─── Main Dashboard ────────────────────────────────────────────────────────────
 
 export function DashboardClient({ data, notifications }: DashboardClientProps) {
@@ -518,37 +780,82 @@ export function DashboardClient({ data, notifications }: DashboardClientProps) {
     setAddresses((prev) => prev.filter((a) => a.id !== id));
   };
 
-  const nextPickup = data.upcomingPickups[0] ?? null;
+  // Collapsible category groups state
+  const [openGroups, setOpenGroups] = useState<Record<PickupCategoryGroup, boolean>>({
+    "General Waste": true,
+    "Recyclables": true,
+    "Green Garden Waste": true,
+  });
+
+  const toggleGroup = (key: PickupCategoryGroup) => {
+    setOpenGroups((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const allExpanded = Object.values(openGroups).every(Boolean);
+
+  const toggleAllGroups = () => {
+    const nextState = !allExpanded;
+    setOpenGroups({
+      "General Waste": nextState,
+      "Recyclables": nextState,
+      "Green Garden Waste": nextState,
+    });
+  };
+
+  // Group upcoming pickups into the 3 categories
+  const groupedPickups = useMemo(() => {
+    const groups: Record<PickupCategoryGroup, UpcomingPickup[]> = {
+      "General Waste": [],
+      "Recyclables": [],
+      "Green Garden Waste": [],
+    };
+
+    for (const pickup of data.upcomingPickups) {
+      const catGroup = getPickupCategoryGroup(pickup.waste_category.name);
+      groups[catGroup].push(pickup);
+    }
+
+    // Sort by scheduled_date then collection_time ascending
+    for (const key of Object.keys(groups) as PickupCategoryGroup[]) {
+      groups[key].sort((a, b) => {
+        const dateCmp = a.scheduled_date.localeCompare(b.scheduled_date);
+        if (dateCmp !== 0) return dateCmp;
+        return (a.collection_time || "").localeCompare(b.collection_time || "");
+      });
+    }
+
+    return groups;
+  }, [data.upcomingPickups]);
+
+  const totalPickupsCount =
+    groupedPickups["General Waste"].length +
+    groupedPickups["Recyclables"].length +
+    groupedPickups["Green Garden Waste"].length;
 
   return (
     <>
       {/* ── Page header ── */}
       <div className="mb-6 sm:mb-8">
-        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
+        <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight text-slate-900">
           My Schedule
         </h1>
-        <p className="mt-1 text-sm sm:text-base text-slate-500">
-          Manage your household address and track scheduled waste collections in Butuan City.
+        <p className="mt-1 text-sm sm:text-base text-slate-600">
+          Track your household collection dates, upcoming pickups, and address settings in Butuan City.
         </p>
       </div>
 
-      {/* ── Next pickup hero ── */}
-      {nextPickup && (
-        <div className="mb-6 sm:mb-8 rounded-2xl bg-gradient-to-r from-emerald-700 via-emerald-600 to-teal-700 p-5 sm:p-6 text-white shadow-md border border-emerald-600">
-          <p className="text-xs font-semibold uppercase tracking-wider text-emerald-200 mb-1.5">Next Scheduled Collection</p>
-          <div className="flex items-center gap-3 sm:gap-4 flex-wrap">
-            <div className="flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-xl bg-white/20 backdrop-blur-xs shrink-0 border border-white/20">
-              {getCategoryStyle(nextPickup.waste_category.name, nextPickup.waste_category.color_code).icon}
-            </div>
-            <div>
-              <p className="text-xl sm:text-2xl font-bold tracking-tight">{nextPickup.waste_category.name}</p>
-              <p className="text-emerald-100 text-xs sm:text-sm font-medium mt-0.5">
-                {formatDate(nextPickup.scheduled_date)} &bull; {daysUntil(nextPickup.scheduled_date)}
-              </p>
-            </div>
+      {/* ── Error Banner (if database query encountered error) ── */}
+      {data.error && (
+        <div className="mb-6 flex items-start gap-3 rounded-2xl bg-amber-50 border border-amber-200 p-4 text-sm text-amber-900">
+          <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+          <div>
+            <p className="font-semibold">Notice: Live updates unavailable</p>
+            <p className="text-amber-800 text-xs sm:text-sm mt-0.5">{data.error}</p>
           </div>
         </div>
       )}
+
+
 
       {/* ── Main grid ── */}
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
@@ -594,64 +901,74 @@ export function DashboardClient({ data, notifications }: DashboardClientProps) {
 
         {/* Right: upcoming pickups */}
         <div className="lg:col-span-2">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
-              <CalendarDays className="h-5 w-5 text-emerald-600" />
-              Upcoming Pickups
-              <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-500">
+          <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+            <div className="flex items-center gap-2">
+              <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                <CalendarDays className="h-5 w-5 text-emerald-600" />
+                Upcoming Pickups
+              </h2>
+              <span className="rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 text-xs font-semibold text-emerald-800">
                 Next 30 days
               </span>
-            </h2>
+            </div>
+
+            {totalPickupsCount > 0 && (
+              <button
+                type="button"
+                onClick={toggleAllGroups}
+                className="text-xs font-semibold text-emerald-700 hover:text-emerald-800 hover:underline flex items-center gap-1 cursor-pointer"
+              >
+                {allExpanded ? "Collapse All" : "Expand All"}
+              </button>
+            )}
           </div>
 
-          {data.upcomingPickups.length === 0 ? (
-            addresses.length === 0 ? (
-              <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 p-10 text-center">
-                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-slate-200 text-slate-400 mb-4">
-                  <CalendarDays className="h-7 w-7" />
-                </div>
-                <p className="font-semibold text-slate-700">Add an address first</p>
-                <p className="text-sm text-slate-500 mt-1 max-w-xs">
-                  Register your address to see your personalised collection schedule.
-                </p>
-                <button
-                  onClick={() => setShowAddModal(true)}
-                  className="mt-5 inline-flex items-center gap-2 rounded-full bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 transition-colors cursor-pointer"
-                >
-                  <Plus className="h-4 w-4" /> Add Address
-                </button>
+          {addresses.length === 0 ? (
+            <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 p-10 text-center">
+              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-slate-200 text-slate-400 mb-4">
+                <CalendarDays className="h-7 w-7" />
               </div>
-            ) : (
-              <EmptyPickups />
-            )
+              <p className="font-semibold text-slate-700">Add an address first</p>
+              <p className="text-sm text-slate-500 mt-1 max-w-xs">
+                Register your address to see your personalised collection schedule.
+              </p>
+              <button
+                onClick={() => setShowAddModal(true)}
+                className="mt-5 inline-flex items-center gap-2 rounded-full bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 transition-colors cursor-pointer"
+              >
+                <Plus className="h-4 w-4" /> Add Address
+              </button>
+            </div>
+          ) : totalPickupsCount === 0 ? (
+            <EmptyPickups />
           ) : (
-            <div className="space-y-3">
-              {data.upcomingPickups.map((pickup) => (
-                <PickupCard key={pickup.id} pickup={pickup} />
+            <div className="space-y-4">
+              {CATEGORY_GROUPS_CONFIG.map((groupMeta) => (
+                <CollapsiblePickupGroup
+                  key={groupMeta.id}
+                  meta={groupMeta}
+                  pickups={groupedPickups[groupMeta.id]}
+                  isOpen={Boolean(openGroups[groupMeta.id])}
+                  onToggle={() => toggleGroup(groupMeta.id)}
+                />
               ))}
-              {data.upcomingPickups.length >= 20 && (
-                <p className="text-center text-sm text-slate-400 py-2">
-                  Showing 20 upcoming pickups
-                </p>
-              )}
             </div>
           )}
-
-          {/* ── Notifications ── */}
-          <div className="mt-6">
-            <NotificationsPanel notifications={notifications} />
-          </div>
         </div>
       </div>
 
-      {/* ── Full Schedule Calendar / List ── */}
-      {addresses.length > 0 && (
-        <CollectionSchedule pickups={data.allPickups} />
-      )}
+      {/* ── Redesigned Collection Schedule Section ── */}
+      <CollectionSchedule
+        schedules={data.barangaySchedules}
+        pickups={data.allPickups}
+        addresses={addresses}
+        onAddAddress={() => setShowAddModal(true)}
+      />
 
       {/* ── Add address modal ── */}
       {showAddModal && (
         <AddAddressModal
+          availableBarangays={data.availableBarangays}
           onClose={() => setShowAddModal(false)}
           onSuccess={() => {
             // Page re-render via revalidatePath handles the update

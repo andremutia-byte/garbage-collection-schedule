@@ -3,7 +3,8 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Show, SignInButton, SignUpButton, UserButton } from "@clerk/nextjs";
+import { Show, SignInButton, SignUpButton } from "@clerk/nextjs";
+import { SafeUserButton } from "@/components/SafeUserButton";
 import {
   ArrowLeft,
   ArrowRight,
@@ -173,7 +174,7 @@ export function ScheduleClient({
                   >
                     My Dashboard <ArrowRight className="h-4 w-4" />
                   </Link>
-                  <UserButton />
+                  <SafeUserButton />
                 </div>
               }
             >
@@ -266,6 +267,17 @@ export function ScheduleClient({
           </div>
         </div>
 
+        {/* Academic Project Demonstration Notice */}
+        <div className="mt-6 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50/90 p-4 text-xs text-amber-900 shadow-2xs">
+          <Info className="h-4 w-4 text-amber-700 shrink-0 mt-0.5" />
+          <div className="space-y-0.5 leading-relaxed">
+            <span className="font-bold">Academic Project Demonstration Schedules: </span>
+            <span>
+              All 86 barangays of Butuan City have independently configured demonstration schedules with collection days, pickup times, and waste categories for academic demonstration purposes (Asia/Manila timezone). These are demonstration schedules and not official municipal timetables.
+            </span>
+          </div>
+        </div>
+
         {selectedBarangay ? (
           <div className="mt-8 space-y-8">
             {/* Highlight: Next Pickup Card */}
@@ -281,7 +293,7 @@ export function ScheduleClient({
                     </h2>
                     <div className="flex flex-wrap items-center gap-4 text-emerald-50 text-sm font-medium">
                       <span className="inline-flex items-center gap-1.5">
-                        <Clock className="h-4 w-4" /> 6:00 AM – 9:00 AM
+                        <Clock className="h-4 w-4" /> {nextPickup.schedule.collection_time || "6:00 AM – 9:00 AM"}
                       </span>
                       <span>&bull;</span>
                       <span className="inline-flex items-center gap-1.5">
@@ -329,11 +341,11 @@ export function ScheduleClient({
               {schedules.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center">
                   <Calendar className="mx-auto h-8 w-8 text-slate-400" />
-                  <h3 className="mt-2 text-sm font-semibold text-slate-700">
-                    No active collection rules for Barangay {selectedBarangay}
+                  <h3 className="mt-2 text-base font-bold text-slate-800">
+                    No collection schedule available yet.
                   </h3>
                   <p className="mt-1 text-xs text-slate-500">
-                    Check back soon or sign up to receive automated pickup reminders when rules are scheduled.
+                    The garbage collection schedule for Barangay {selectedBarangay} has not been posted yet by the city administration.
                   </p>
                 </div>
               ) : (
@@ -377,7 +389,7 @@ export function ScheduleClient({
                             </div>
                             <div className="mt-1 flex items-center gap-1.5 text-xs text-slate-600 font-medium">
                               <Clock className="h-3.5 w-3.5 text-slate-400" />
-                              Morning Pickup (6:00 AM – 9:00 AM)
+                              {item.collection_time || "Morning Pickup (6:00 AM – 9:00 AM)"}
                             </div>
                             <p className="mt-3 text-xs leading-relaxed text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-100">
                               {item.category.instructions ||
@@ -463,7 +475,7 @@ export function ScheduleClient({
             </section>
 
             {/* Reminder Callout Banner */}
-            <div className="rounded-3xl border border-emerald-200 bg-emerald-50 p-6 sm:p-8 shadow-sm flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+            <div id="alert-options" className="rounded-3xl border border-emerald-200 bg-emerald-50 p-6 sm:p-8 shadow-sm flex flex-col md:flex-row md:items-center md:justify-between gap-6 scroll-mt-24">
               <div className="flex items-start gap-4">
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-600 text-white shadow-xs shrink-0">
                   <BellRing className="h-6 w-6" />

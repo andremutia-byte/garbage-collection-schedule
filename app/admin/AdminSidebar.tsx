@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { UserButton } from "@clerk/nextjs";
+import { SafeUserButton } from "@/components/SafeUserButton";
 import {
   BarChart3,
   Building2,
@@ -41,7 +41,7 @@ export function AdminSidebar() {
         </div>
 
         <div className="flex items-center gap-2">
-          <UserButton />
+          <SafeUserButton />
           <button
             onClick={() => setMobileOpen(!mobileOpen)}
             className="p-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
@@ -132,7 +132,7 @@ export function AdminSidebar() {
             Switch to Resident View
           </Link>
           <div className="flex items-center gap-2.5 pt-1 border-t border-slate-800/60">
-            <UserButton />
+            <SafeUserButton />
             <span className="text-xs text-slate-400">Account</span>
           </div>
         </div>

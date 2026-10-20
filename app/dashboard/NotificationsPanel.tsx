@@ -11,7 +11,6 @@ import {
   Recycle,
   Leaf,
   Trash2,
-  X,
 } from "lucide-react";
 import type { ResidentNotification } from "@/app/actions/notifications";
 import {

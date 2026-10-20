@@ -304,36 +304,42 @@ export type Database = {
       schedules: {
         Row: {
           barangay_id: string | null
+          collection_time: string
           created_at: string
           day_of_week: number | null
           deleted_at: string | null
           end_date: string | null
           frequency: Database["public"]["Enums"]["schedule_frequency"]
           id: string
+          is_active: boolean
           start_date: string
           updated_at: string
           waste_category_id: string
         }
         Insert: {
           barangay_id?: string | null
+          collection_time?: string
           created_at?: string
           day_of_week?: number | null
           deleted_at?: string | null
           end_date?: string | null
           frequency?: Database["public"]["Enums"]["schedule_frequency"]
           id?: string
+          is_active?: boolean
           start_date?: string
           updated_at?: string
           waste_category_id: string
         }
         Update: {
           barangay_id?: string | null
+          collection_time?: string
           created_at?: string
           day_of_week?: number | null
           deleted_at?: string | null
           end_date?: string | null
           frequency?: Database["public"]["Enums"]["schedule_frequency"]
           id?: string
+          is_active?: boolean
           start_date?: string
           updated_at?: string
           waste_category_id?: string

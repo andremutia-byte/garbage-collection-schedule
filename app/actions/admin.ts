@@ -442,6 +442,7 @@ export async function updateCategory(
 }
 
 // ─────────────────────────────────────────────
+// ─────────────────────────────────────────────
 // Schedules (recurring rules)
 // ─────────────────────────────────────────────
 export interface AdminSchedule {
@@ -455,6 +456,8 @@ export interface AdminSchedule {
   end_date: string | null;
   barangay_id: string | null;
   barangay_name: string;
+  collection_time: string;
+  is_active: boolean;
 }
 
 export interface AdminBarangay {
@@ -481,7 +484,7 @@ export async function getAdminSchedules(): Promise<AdminSchedule[]> {
   const { data } = await db
     .from("schedules")
     .select(`
-      id, waste_category_id, frequency, day_of_week, start_date, end_date, barangay_id,
+      id, waste_category_id, frequency, day_of_week, start_date, end_date, barangay_id, collection_time, is_active,
       waste_categories ( name, color_code ),
       barangays ( id, name )
     `)
@@ -499,6 +502,8 @@ export async function getAdminSchedules(): Promise<AdminSchedule[]> {
     end_date: s.end_date,
     barangay_id: s.barangay_id ?? null,
     barangay_name: (s.barangays as any)?.name ?? "All Barangays",
+    collection_time: s.collection_time || "06:00 AM – 09:00 AM",
+    is_active: s.is_active ?? true,
   }));
 }
 
@@ -509,6 +514,9 @@ export async function createSchedule(formData: FormData): Promise<ActionResult<{
   const day_of_week_str = (formData.get("day_of_week") as string)?.trim();
   const start_date = (formData.get("start_date") as string)?.trim();
   const end_date = (formData.get("end_date") as string)?.trim() || null;
+  const collection_time = (formData.get("collection_time") as string)?.trim() || "06:00 AM – 09:00 AM";
+  const is_active_val = formData.get("is_active");
+  const is_active = is_active_val === null ? true : is_active_val === "true" || is_active_val === "on";
   const applies_to = (formData.get("applies_to") as string)?.trim() || "all";
   const rawBarangayIds = formData.getAll("barangay_ids") as string[];
 
@@ -523,13 +531,23 @@ export async function createSchedule(formData: FormData): Promise<ActionResult<{
   if (applies_to === "all" || validBarangayIds.length === 0) {
     const { data, error } = await db
       .from("schedules")
-      .insert({ waste_category_id, frequency, day_of_week, start_date, end_date, barangay_id: null })
+      .insert({
+        waste_category_id,
+        frequency,
+        day_of_week,
+        start_date,
+        end_date,
+        barangay_id: null,
+        collection_time,
+        is_active,
+      })
       .select("id")
       .single();
 
     if (error) return { success: false, error: error.message };
     revalidatePath("/admin/schedules");
     revalidatePath("/schedule");
+    revalidatePath("/dashboard");
     return { success: true, data: { id: data.id, count: 1 } };
   }
 
@@ -540,6 +558,8 @@ export async function createSchedule(formData: FormData): Promise<ActionResult<{
     start_date,
     end_date,
     barangay_id: bId,
+    collection_time,
+    is_active,
   }));
 
   const { data, error } = await db.from("schedules").insert(rows).select("id");
@@ -547,6 +567,7 @@ export async function createSchedule(formData: FormData): Promise<ActionResult<{
 
   revalidatePath("/admin/schedules");
   revalidatePath("/schedule");
+  revalidatePath("/dashboard");
   return { success: true, data: { count: data.length, id: data[0]?.id } };
 }
 
@@ -560,6 +581,9 @@ export async function updateSchedule(
   const day_of_week_str = (formData.get("day_of_week") as string)?.trim();
   const start_date = (formData.get("start_date") as string)?.trim();
   const end_date = (formData.get("end_date") as string)?.trim() || null;
+  const collection_time = (formData.get("collection_time") as string)?.trim() || "06:00 AM – 09:00 AM";
+  const is_active_val = formData.get("is_active");
+  const is_active = is_active_val === "true" || is_active_val === "on";
   const applies_to = (formData.get("applies_to") as string)?.trim() || "all";
   const barangay_id_raw = (formData.get("barangay_id") as string)?.trim();
   const barangay_id = applies_to === "all" || !barangay_id_raw || barangay_id_raw === "all" ? null : barangay_id_raw;
@@ -580,6 +604,8 @@ export async function updateSchedule(
       start_date,
       end_date,
       barangay_id,
+      collection_time,
+      is_active,
       updated_at: new Date().toISOString(),
     })
     .eq("id", scheduleId);
@@ -587,6 +613,28 @@ export async function updateSchedule(
   if (error) return { success: false, error: error.message };
   revalidatePath("/admin/schedules");
   revalidatePath("/schedule");
+  revalidatePath("/dashboard");
+  return { success: true };
+}
+
+export async function toggleScheduleActive(
+  scheduleId: string,
+  isActive: boolean
+): Promise<ActionResult> {
+  await requireAdmin();
+  const db = createAdminSupabaseClient();
+  const { error } = await db
+    .from("schedules")
+    .update({
+      is_active: isActive,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", scheduleId);
+
+  if (error) return { success: false, error: error.message };
+  revalidatePath("/admin/schedules");
+  revalidatePath("/schedule");
+  revalidatePath("/dashboard");
   return { success: true };
 }
 
@@ -599,6 +647,8 @@ export async function deleteSchedule(scheduleId: string): Promise<ActionResult> 
     .eq("id", scheduleId);
   if (error) return { success: false, error: error.message };
   revalidatePath("/admin/schedules");
+  revalidatePath("/schedule");
+  revalidatePath("/dashboard");
   return { success: true };
 }
 
@@ -709,12 +759,13 @@ export async function generatePickupsFromSchedule(
   // Fetch the schedule rule
   const { data: sched, error: schedErr } = await db
     .from("schedules")
-    .select("waste_category_id, frequency, day_of_week, start_date, end_date, barangay_id")
+    .select("waste_category_id, frequency, day_of_week, start_date, end_date, barangay_id, is_active")
     .eq("id", scheduleId)
     .is("deleted_at", null)
     .single();
 
   if (schedErr || !sched) return { success: false, error: "Schedule not found." };
+  if (!sched.is_active) return { success: false, error: "This schedule rule is currently deactivated. Activate it first to generate pickups." };
   if (sched.day_of_week === null) return { success: false, error: "Schedule has no day_of_week set." };
 
   // Fetch active addresses (filtered by barangay_id if schedule is barangay-scoped)
