@@ -60,18 +60,18 @@ function getCategoryStyle(name: string) {
   const lower = name.toLowerCase();
   if (lower.includes("green") || lower.includes("bio") || lower.includes("garden")) {
     return {
-      bg: "bg-emerald-50 text-emerald-700 border-emerald-200",
-      icon: <Leaf className="h-4 w-4 text-emerald-600 shrink-0" />,
+      bg: "bg-[#E8F0E7] text-[#176B45] border-[#176B45]/25",
+      icon: <Leaf className="h-4 w-4 text-[#176B45] shrink-0" />,
     };
   }
   if (lower.includes("recycle") || lower.includes("plastic") || lower.includes("paper")) {
     return {
-      bg: "bg-blue-50 text-blue-700 border-blue-200",
-      icon: <Recycle className="h-4 w-4 text-blue-600 shrink-0" />,
+      bg: "bg-[#376B87]/10 text-[#376B87] border-[#376B87]/25",
+      icon: <Recycle className="h-4 w-4 text-[#376B87] shrink-0" />,
     };
   }
   return {
-    bg: "bg-slate-100 text-slate-700 border-slate-200",
+    bg: "bg-slate-100 text-[#172B3A] border-slate-200",
     icon: <Trash2 className="h-4 w-4 text-slate-600 shrink-0" />,
   };
 }
@@ -250,19 +250,19 @@ export default function Hero({
     <section className="mx-auto grid max-w-6xl items-center gap-12 px-6 py-16 md:grid-cols-2 md:py-24">
       {/* Left: copy + quick check */}
       <div>
-        <span className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-1.5 text-sm font-semibold text-emerald-800">
-          <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+        <span className="inline-flex items-center gap-2 rounded-full border border-[#176B45]/25 bg-[#E8F0E7] px-4 py-1.5 text-sm font-semibold text-[#176B45] shadow-2xs">
+          <span className="h-2 w-2 rounded-full bg-[#176B45] animate-pulse" />
           City of Butuan Waste Management
         </span>
 
-        <h1 className="mt-6 text-4xl font-extrabold leading-tight tracking-tight text-slate-900 md:text-6xl">
-          Never Miss a <span className="text-emerald-600">Garbage Collection</span> Day in Butuan
+        <h1 className="mt-6 text-4xl font-extrabold leading-tight tracking-tight text-[#172B3A] md:text-6xl">
+          Never Miss a <span className="text-[#176B45]">Garbage Collection</span> Day in Butuan
         </h1>
 
-        <p className="mt-4 text-lg font-semibold text-emerald-800">
+        <p className="mt-4 text-lg font-semibold text-[#176B45]">
           “A Cleaner Butuan, One Collection at a Time.”
         </p>
-        <p className="mt-2 max-w-xl text-base leading-relaxed text-slate-600">
+        <p className="mt-2 max-w-xl text-base leading-relaxed text-[#172B3A]/85 font-medium">
           Check your barangay&apos;s waste and recycling schedule in seconds. Register your
           address once and we&apos;ll remind you before every pickup.
         </p>
@@ -270,7 +270,7 @@ export default function Hero({
         {/* Barangay Quick-Check Form */}
         <form
           onSubmit={handleCheck}
-          className="mt-8 flex max-w-xl flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:flex-row relative"
+          className="mt-8 flex max-w-xl flex-col gap-3 rounded-2xl border border-[#176B45]/20 bg-white/95 backdrop-blur-md p-3 shadow-md sm:flex-row relative"
         >
           <label htmlFor="barangay" className="sr-only">
             Select your barangay
@@ -281,7 +281,7 @@ export default function Hero({
               value={barangay}
               onChange={(e) => handleSelectBarangay(e.target.value)}
               disabled={isLoadingBarangays}
-              className="w-full appearance-none rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer pr-10"
+              className="w-full appearance-none rounded-xl border border-slate-200 bg-[#FAF9F5] px-4 py-3 text-[#172B3A] font-medium focus:outline-none focus:ring-2 focus:ring-[#176B45] disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer pr-10"
             >
               {isLoadingBarangays ? (
                 <option value="">Loading Butuan barangays…</option>
@@ -296,11 +296,11 @@ export default function Hero({
                 </option>
               ))}
             </select>
-            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-400">
+            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-[#376B87]">
               {isLoadingBarangays ? (
-                <Loader2 className="h-4 w-4 animate-spin text-emerald-600" />
+                <Loader2 className="h-4 w-4 animate-spin text-[#176B45]" />
               ) : (
-                <ArrowRight className="h-4 w-4 rotate-90 text-slate-400" />
+                <ArrowRight className="h-4 w-4 rotate-90 text-[#376B87]" />
               )}
             </div>
           </div>
@@ -308,7 +308,7 @@ export default function Hero({
           <button
             type="submit"
             disabled={!barangay || isLoadingBarangays || isNavigating}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-6 py-3 font-semibold text-white shadow-xs transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer min-w-[170px]"
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#176B45] px-6 py-3 font-semibold text-white shadow-xs transition hover:bg-[#125536] active:bg-[#0f442b] disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer min-w-[170px]"
           >
             {isNavigating ? (
               <>
@@ -346,33 +346,33 @@ export default function Hero({
             id="view-schedules-alert-options"
             href={targetAlertsUrl}
             onClick={handleAlertOptionsClick}
-            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs sm:text-sm font-semibold text-slate-700 shadow-2xs hover:border-emerald-300 hover:bg-emerald-50/70 hover:text-emerald-800 active:bg-emerald-100 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 cursor-pointer pointer-events-auto relative z-10"
+            className="inline-flex items-center gap-2 rounded-xl border border-[#376B87]/30 bg-white/95 backdrop-blur-xs px-4 py-2.5 text-xs sm:text-sm font-semibold text-[#172B3A] shadow-2xs hover:border-[#176B45] hover:bg-[#E8F0E7]/80 hover:text-[#176B45] active:bg-[#E8F0E7] transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#176B45] cursor-pointer pointer-events-auto relative z-10 group"
             aria-label="View collection schedules and manage notification alert options"
           >
-            <BellRing className="h-4 w-4 text-emerald-600 shrink-0" />
+            <BellRing className="h-4 w-4 text-[#176B45] shrink-0" />
             <span>View Schedules & Alert Options</span>
-            <ArrowRight className="h-3.5 w-3.5 text-slate-400 group-hover:text-emerald-700 transition-colors" />
+            <ArrowRight className="h-3.5 w-3.5 text-[#376B87] group-hover:text-[#176B45] group-hover:translate-x-0.5 transition-all" />
           </Link>
         </div>
       </div>
 
       {/* Right: Dynamic schedule preview card for the selected barangay */}
       <div className="relative mx-auto w-full max-w-md">
-        <div className="pointer-events-none absolute -inset-4 rounded-3xl bg-emerald-100/60 blur-2xl" />
-        <div className="relative rounded-3xl border border-slate-200 bg-white p-6 shadow-xl transition-all">
+        <div className="pointer-events-none absolute -inset-4 rounded-3xl bg-[#176B45]/15 blur-2xl" />
+        <div className="relative rounded-3xl border border-[#176B45]/20 bg-white/95 backdrop-blur-md p-6 shadow-xl transition-all">
           {/* Card Top Label */}
           <div className="flex items-center justify-between gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">
-            <span className="inline-flex items-center gap-1.5 text-emerald-700">
-              <CalendarDays className="h-4 w-4 text-emerald-600" />
+            <span className="inline-flex items-center gap-1.5 text-[#176B45] font-bold">
+              <CalendarDays className="h-4 w-4 text-[#176B45]" />
               {barangay ? `Barangay ${barangay}` : "Schedule Preview"}
             </span>
             {isFetchingSchedules ? (
-              <span className="inline-flex items-center gap-1 text-[11px] text-slate-400">
-                <Loader2 className="h-3 w-3 animate-spin" /> Updating…
+              <span className="inline-flex items-center gap-1 text-[11px] text-[#376B87]">
+                <Loader2 className="h-3 w-3 animate-spin text-[#176B45]" /> Updating…
               </span>
             ) : currentSchedules.length > 0 ? (
-              <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                <Sparkles className="h-3 w-3" /> Active
+              <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#176B45] bg-[#E8F0E7] px-2.5 py-0.5 rounded-full border border-[#176B45]/20">
+                <Sparkles className="h-3 w-3 text-[#176B45]" /> Active
               </span>
             ) : null}
           </div>
@@ -381,10 +381,10 @@ export default function Hero({
           {!barangay ? (
             /* State: No barangay selected yet */
             <div className="flex flex-col items-center justify-center text-center py-8 px-2">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-100 mb-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#E8F0E7] text-[#176B45] border border-[#176B45]/20 mb-3">
                 <MapPin className="h-6 w-6" />
               </div>
-              <h3 className="text-lg font-bold text-slate-900">Select Your Barangay</h3>
+              <h3 className="text-lg font-bold text-[#172B3A]">Select Your Barangay</h3>
               <p className="mt-1.5 text-xs text-slate-500 max-w-xs leading-relaxed">
                 Choose any of the 86 official barangays of Butuan City to see pickup dates, collection times, and waste categories.
               </p>
@@ -398,7 +398,7 @@ export default function Hero({
               <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 border border-amber-200 px-3 py-0.5 text-xs font-bold text-amber-800 uppercase tracking-wider mb-2">
                 No Schedule Posted
               </span>
-              <h3 className="text-lg font-bold text-slate-900">
+              <h3 className="text-lg font-bold text-[#172B3A]">
                 No collection schedule available yet.
               </h3>
               <p className="mt-1.5 text-xs text-slate-500 max-w-xs leading-relaxed">
@@ -407,7 +407,7 @@ export default function Hero({
               <div className="mt-5 w-full pt-4 border-t border-slate-100 flex items-center justify-center">
                 <Link
                   href="/schedule"
-                  className="text-xs font-semibold text-emerald-700 hover:text-emerald-800 hover:underline inline-flex items-center gap-1"
+                  className="text-xs font-semibold text-[#176B45] hover:text-[#125536] hover:underline inline-flex items-center gap-1"
                 >
                   Browse city-wide guidelines <ArrowRight className="h-3 w-3" />
                 </Link>
@@ -418,19 +418,19 @@ export default function Hero({
             <>
               {/* Prominent Next Pickup Date */}
               <div className="mt-1">
-                <span className="text-xs font-bold uppercase tracking-wider text-emerald-700">
+                <span className="text-xs font-bold uppercase tracking-wider text-[#176B45]">
                   Next Pickup
                 </span>
-                <p className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight mt-0.5">
+                <p className="text-2xl sm:text-3xl font-extrabold text-[#172B3A] tracking-tight mt-0.5">
                   {nextPickup ? nextPickup.formattedDate : "Upcoming Collection"}
                 </p>
                 <div className="flex items-center gap-2 text-xs font-semibold text-slate-600 mt-1">
-                  <span className="flex items-center gap-1 text-emerald-800">
-                    <Clock className="h-3.5 w-3.5 text-emerald-600" />
+                  <span className="flex items-center gap-1 text-[#176B45]">
+                    <Clock className="h-3.5 w-3.5 text-[#176B45]" />
                     {nextPickup ? nextPickup.schedule.collection_time : "06:00 AM – 09:00 AM"}
                   </span>
                   <span className="text-slate-300">•</span>
-                  <span>Barangay {barangay}</span>
+                  <span className="text-[#172B3A]/80">Barangay {barangay}</span>
                 </div>
               </div>
 
@@ -449,7 +449,7 @@ export default function Hero({
                     return (
                       <li
                         key={s.id}
-                        className="flex items-center justify-between rounded-xl border border-slate-100 px-3.5 py-2.5 bg-slate-50/70"
+                        className="flex items-center justify-between rounded-xl border border-slate-100 px-3.5 py-2.5 bg-[#FAF9F5]/80"
                       >
                         <span
                           className={`inline-flex items-center gap-2 rounded-lg border px-2.5 py-1 text-xs font-semibold ${style.bg}`}
@@ -458,7 +458,7 @@ export default function Hero({
                           {s.category.name}
                         </span>
                         <div className="text-right">
-                          <span className="text-xs font-bold text-slate-800">
+                          <span className="text-xs font-bold text-[#172B3A]">
                             {dayLabel}
                           </span>
                           <span className="block text-[11px] text-slate-500 font-medium">
@@ -472,9 +472,9 @@ export default function Hero({
               </div>
 
               {/* Evening reminder note */}
-              <div className="mt-5 rounded-xl bg-emerald-50 px-3.5 py-2.5 text-xs text-emerald-800 flex items-center gap-2 border border-emerald-100">
+              <div className="mt-5 rounded-xl bg-[#E8F0E7] px-3.5 py-2.5 text-xs text-[#176B45] flex items-center gap-2 border border-[#176B45]/25">
                 <span>🔔</span>
-                <span className="leading-tight">
+                <span className="leading-tight font-medium">
                   Reminder sent the evening before collection
                 </span>
               </div>
@@ -483,7 +483,7 @@ export default function Hero({
               <div className="mt-4 pt-3 border-t border-slate-100 text-center">
                 <Link
                   href={`/schedule?barangay=${encodeURIComponent(barangay)}`}
-                  className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 hover:text-emerald-800 hover:underline"
+                  className="inline-flex items-center gap-1 text-xs font-semibold text-[#176B45] hover:text-[#125536] hover:underline"
                 >
                   View full calendar & details for {barangay} <ArrowRight className="h-3 w-3" />
                 </Link>

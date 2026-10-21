@@ -1,13 +1,23 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f8fafc;
-  --foreground: #0f172a;
+  --background: #FAF9F5;
+  --foreground: #172B3A;
+  --forest-green: #176B45;
+  --river-blue: #376B87;
+  --warm-white: #FAF9F5;
+  --dark-navy: #172B3A;
+  --soft-sage: #E8F0E7;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-forest: #176B45;
+  --color-river: #376B87;
+  --color-warm-white: #FAF9F5;
+  --color-dark-navy: #172B3A;
+  --color-soft-sage: #E8F0E7;
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -19,10 +29,10 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Custom Emerald-Green Scrollbar for Upcoming Pickups container */
+/* Custom Scrollbar for Upcoming Pickups container */
 .custom-scrollbar {
   scrollbar-width: thin;
-  scrollbar-color: #10b981 #f1f5f9;
+  scrollbar-color: #176B45 #FAF9F5;
   -webkit-overflow-scrolling: touch;
 }
 
@@ -31,17 +41,17 @@ body {
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
-  background: #f8fafc;
+  background: #FAF9F5;
   border-radius: 9999px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background-color: #a7f3d0;
+  background-color: #E8F0E7;
   border-radius: 9999px;
-  border: 1px solid #6ee7b7;
+  border: 1px solid #176B45;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background-color: #059669;
+  background-color: #176B45;
 }
 
